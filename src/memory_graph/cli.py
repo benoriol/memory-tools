@@ -1,0 +1,229 @@
+"""`memory-graph` CLI.
+
+Subcommands:
+  init       Create .memory-graph/ in the current project.
+  serve      Run the MCP server on stdio (used by Claude Code).
+  digest     End-of-session reflection (Stop-hook entry point).
+  reindex    Rebuild the SQLite index from markdown notes.
+  status     Print store stats as JSON.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+from memory_graph.storage.files import NOTES_DIRNAME, STORE_DIRNAME
+
+CONFIG_FILE = "config.yml"
+DEFAULT_CONFIG = """\
+# memory-graph store config
+
+embedding:
+  model: sentence-transformers/all-MiniLM-L6-v2
+  provider: fastembed
+"""
+
+
+# ----------------------------------------------------------------------------
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    """Create .memory-graph/ in `--path` (default: cwd)."""
+    project = Path(args.path).resolve()
+    root = project / STORE_DIRNAME
+    if root.exists():
+        print(f"Already initialized: {root}", file=sys.stderr)
+        return 1
+    (root / NOTES_DIRNAME).mkdir(parents=True)
+    (root / "_operator").mkdir()
+    (root / "_pending").mkdir()
+    (root / CONFIG_FILE).write_text(DEFAULT_CONFIG)
+    # A gentle gitignore inside the store so users can commit notes but
+    # keep machine-local SQLite/cache out of the repo.
+    (root / ".gitignore").write_text("index.db\nindex.db-*\n.cache/\n")
+    print(f"Initialized {root}")
+    return 0
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    """Run the MCP server on stdio."""
+    from memory_graph.server import main as serve_main
+
+    serve_main()
+    return 0
+
+
+def cmd_digest(args: argparse.Namespace) -> int:
+    """End-of-session digest.
+
+    Reads the transcript pointed to by `--transcript` (or
+    $CLAUDE_TRANSCRIPT_PATH) and hands it to the memory sub-agent's
+    remember flow. This is the Stop-hook entry point.
+    """
+    path = args.transcript or os.environ.get("CLAUDE_TRANSCRIPT_PATH")
+    if not path:
+        print(
+            "no transcript provided (pass --transcript or set "
+            "$CLAUDE_TRANSCRIPT_PATH)",
+            file=sys.stderr,
+        )
+        return 2
+    transcript = Path(path).read_text(encoding="utf-8")
+    if not transcript.strip():
+        print("transcript is empty; nothing to digest", file=sys.stderr)
+        return 0
+
+    store = _open_store_or_die()
+    try:
+        from memory_graph.orchestration import remember
+    except ImportError:
+        print(
+            "claude-agent-sdk is not installed; install with "
+            "`pip install memory-graph-mcp[agent]`",
+            file=sys.stderr,
+        )
+        return 3
+    synthesis = remember(transcript, store=store)
+    print(synthesis)
+    return 0
+
+
+def cmd_reindex(args: argparse.Namespace) -> int:
+    """Rebuild the SQLite index from the markdown files.
+
+    Used after manual edits, a `git pull` that changed `notes/`, or a
+    schema bump.
+    """
+    from memory_graph.embed import LocalEmbedder
+    from memory_graph.primitives import Store
+    from memory_graph.storage import read_note
+
+    root = _resolve_root_path(args.path)
+    db_path = root / "index.db"
+    if db_path.exists() and not args.keep_db:
+        db_path.unlink()
+    notes_dir = root / NOTES_DIRNAME
+    if not notes_dir.is_dir():
+        print(f"no notes directory at {notes_dir}", file=sys.stderr)
+        return 1
+
+    embedder = LocalEmbedder() if not args.no_embed else _NullEmbedder()
+    n = 0
+    with Store(root, embedder=embedder) as s:
+        for md in sorted(notes_dir.glob("*.md")):
+            note = read_note(md)
+            # Re-insert from scratch; capture() will mint a new
+            # created_at, so we use the underlying insert helper instead.
+            s._insert_node(note)
+            # Re-embed unless --no-embed.
+            if not args.no_embed:
+                from memory_graph.embed.base import build_embed_input
+
+                text = build_embed_input(note.title, note.summary, note.body)
+                vec = embedder.embed(text)
+                s._upsert_embedding(note.id, note.body_hash or "", vec)
+            n += 1
+    print(f"rebuilt {n} notes into {db_path}")
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    """Print the store's stats as JSON."""
+    from memory_graph.embed import LocalEmbedder
+    from memory_graph.primitives import Store
+
+    root = _resolve_root_path(args.path)
+    with Store(root, embedder=LocalEmbedder()) as s:
+        print(json.dumps(s.status(), indent=2))
+    return 0
+
+
+# ----------------------------------------------------------------------------
+
+
+def _resolve_root_path(start: str | None) -> Path:
+    """Walk up from `start` (or CWD) looking for .memory-graph/."""
+    from memory_graph.storage.files import store_root
+
+    return store_root(start) if start else store_root()
+
+
+def _open_store_or_die():
+    from memory_graph.embed import LocalEmbedder
+    from memory_graph.primitives import Store
+
+    root = _resolve_root_path(None)
+    return Store(root, embedder=LocalEmbedder())
+
+
+class _NullEmbedder:
+    """Used when --no-embed is passed to reindex (fast rebuild for inspection)."""
+
+    name = "null"
+    dim = 0
+
+    def embed(self, text: str):  # pragma: no cover
+        raise RuntimeError("null embedder cannot embed")
+
+    def embed_batch(self, texts):  # pragma: no cover
+        raise RuntimeError("null embedder cannot embed")
+
+
+# ----------------------------------------------------------------------------
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="memory-graph")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_init = sub.add_parser("init", help="initialize a project store")
+    p_init.add_argument(
+        "--path", default=".", help="project root (default: cwd)"
+    )
+    p_init.set_defaults(func=cmd_init)
+
+    p_serve = sub.add_parser("serve", help="run the MCP server on stdio")
+    p_serve.set_defaults(func=cmd_serve)
+
+    p_digest = sub.add_parser("digest", help="end-of-session digest (Stop hook)")
+    p_digest.add_argument(
+        "--transcript",
+        help="path to the Claude Code transcript (or set $CLAUDE_TRANSCRIPT_PATH)",
+    )
+    p_digest.set_defaults(func=cmd_digest)
+
+    p_reindex = sub.add_parser(
+        "reindex", help="rebuild the SQLite index from markdown notes"
+    )
+    p_reindex.add_argument("--path", default=None)
+    p_reindex.add_argument(
+        "--no-embed",
+        action="store_true",
+        help="rebuild the index without recomputing embeddings",
+    )
+    p_reindex.add_argument(
+        "--keep-db",
+        action="store_true",
+        help="don't delete the existing DB before reindexing",
+    )
+    p_reindex.set_defaults(func=cmd_reindex)
+
+    p_status = sub.add_parser("status", help="print store stats as JSON")
+    p_status.add_argument("--path", default=None)
+    p_status.set_defaults(func=cmd_status)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return args.func(args) or 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
