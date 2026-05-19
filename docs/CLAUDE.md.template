@@ -1,0 +1,46 @@
+<!--
+Drop this section into a project's CLAUDE.md (or .claude/CLAUDE.md)
+to turn on the memory protocol. Customize the path lists and the
+optional kinds list to fit the project.
+-->
+
+## Memory protocol
+
+This project uses memory-graph-mcp. Three tools matter:
+
+- `memory_retrieve(query, intent="decide|explore|verify")` — call this
+  **before** any non-trivial decision, before designing experiments,
+  and before editing anything in:
+    - `migrations/`, `auth/`, `payments/`, or any other path you list
+      as load-bearing.
+  Cite returned ids inline in your reasoning, e.g. "per [01HXY...]".
+
+- `memory_remember(dump)` — call this **after**:
+    - completing an experiment (success or failure both matter)
+    - making a non-obvious design decision
+    - hitting a surprising bug whose lesson generalizes
+    - finishing a session where anything noteworthy happened.
+  Pass a thorough, free-form description — multiple paragraphs is
+  fine. The memory sub-agent decomposes it into the right notes at
+  the right abstraction levels.
+
+- `memory_compact(scope?)` — invoke manually when a region of memory
+  feels noisy or overdue for cleanup.
+
+### Workflow expectations
+
+- If `memory_retrieve` surfaces a contradiction with what you're about
+  to do, address it explicitly. Either justify why the prior note no
+  longer applies (and `memory_remember` the update), or change course.
+- If a `memory_retrieve` response includes `clarifications_needed`,
+  try to answer from session context first; only ask the user as a
+  last resort.
+- Memory writes are cheap and reversible. When in doubt, capture.
+
+### Heuristic for what's worth remembering
+
+> Would you tell a colleague about this lesson? Would you want to
+> recall it six months from now?
+
+If yes → `memory_remember`.
+If no, or it's already obvious from the code → don't.
