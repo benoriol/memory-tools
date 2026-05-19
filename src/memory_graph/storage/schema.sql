@@ -71,3 +71,16 @@ CREATE TABLE IF NOT EXISTS anchors (
 );
 
 CREATE INDEX IF NOT EXISTS idx_anchors_path ON anchors(path);
+
+-- Embeddings. Stored as raw BLOB of float32; cosine similarity is computed
+-- in Python (numpy) for v0. For larger stores, swap in sqlite-vec without
+-- changing the column shape.
+CREATE TABLE IF NOT EXISTS embeddings (
+    node_id     TEXT PRIMARY KEY,
+    body_hash   TEXT NOT NULL,
+    vector      BLOB NOT NULL,
+    dim         INTEGER NOT NULL,
+    model       TEXT NOT NULL,
+    created_at  INTEGER NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+);
