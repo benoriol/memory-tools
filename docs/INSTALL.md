@@ -29,24 +29,63 @@ pipx install -e .
 
 ## 3. Register the MCP server with Claude Code
 
-Add to `~/.claude.json` (or use `claude mcp add`):
+You have two options. Pick one.
+
+### Option A — project-local (recommended for trying it out)
+
+Only the project you're in will see the tool:
+
+```bash
+cd ~/projects/your-project
+export CLAUDE_CODE_OAUTH_TOKEN=<paste the token from step 1>
+memory-graph register
+```
+
+That writes `./.mcp.json` with an absolute path to the binary and your
+token. Other projects are unaffected.
+
+### Option B — user-global (every Claude Code session sees it)
+
+```bash
+export CLAUDE_CODE_OAUTH_TOKEN=<paste the token from step 1>
+memory-graph register --scope user
+```
+
+That merges the entry into `~/.claude.json`. Even with this, the
+server is dormant in any project that hasn't been `memory-graph init`'d
+— each `.memory-graph/` directory is the actual data boundary.
+
+### Manual alternative
+
+If you prefer to write the config by hand, the file should look like:
 
 ```json
 {
   "mcpServers": {
     "memory-graph": {
-      "command": "memory-graph",
+      "command": "/abs/path/to/memory-graph",
       "args": ["serve"],
       "env": {
-        "CLAUDE_CODE_OAUTH_TOKEN": "<paste the token from step 1>"
+        "CLAUDE_CODE_OAUTH_TOKEN": "<the token>"
       }
     }
   }
 }
 ```
 
-Restart Claude Code. You should see 13 `memory_*` tools available
-(10 primitives + remember / retrieve / compact).
+Drop it as `./.mcp.json` (project) or merge into `~/.claude.json` (user).
+
+### Verify
+
+Restart Claude Code. The 13 `memory_*` tools should be available
+(10 primitives + `memory_remember` / `memory_retrieve` / `memory_compact`).
+
+### Undo
+
+```bash
+memory-graph unregister             # project-local
+memory-graph unregister --scope user # user-global
+```
 
 ## 4. Initialize a project store
 

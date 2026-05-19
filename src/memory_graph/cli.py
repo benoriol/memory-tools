@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -142,6 +143,86 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_register(args: argparse.Namespace) -> int:
+    """Write/merge the MCP server config for this tool.
+
+    `--scope project` (default): writes ./.mcp.json in the current dir so
+    only this project's Claude Code sessions see the server.
+
+    `--scope user`: merges into ~/.claude.json so every project does.
+
+    The OAuth token is taken from `--token` if given, otherwise from
+    $CLAUDE_CODE_OAUTH_TOKEN. If neither is set, we still write the
+    config (with an empty token value) and print a warning so you can
+    fill it in by hand.
+    """
+    binary = _resolve_binary_path(args.binary)
+    if binary is None:
+        print(
+            "could not locate the `memory-graph` binary on PATH. "
+            "Pass --binary /abs/path/to/memory-graph explicitly.",
+            file=sys.stderr,
+        )
+        return 1
+
+    token = args.token or os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
+
+    entry = {
+        "command": binary,
+        "args": ["serve"],
+        "env": {"CLAUDE_CODE_OAUTH_TOKEN": token},
+    }
+
+    if args.scope == "user":
+        target = Path.home() / ".claude.json"
+    else:
+        target = Path(args.path).resolve() / ".mcp.json"
+
+    data = _read_json(target)
+    servers = data.setdefault("mcpServers", {})
+    if args.name in servers and not args.force:
+        print(
+            f"`{args.name}` already registered in {target}. "
+            "Use --force to overwrite.",
+            file=sys.stderr,
+        )
+        return 1
+    servers[args.name] = entry
+    target.write_text(json.dumps(data, indent=2) + "\n")
+
+    print(f"Registered `{args.name}` in {target}")
+    if not token:
+        print(
+            "  warning: CLAUDE_CODE_OAUTH_TOKEN is empty. Run "
+            "`claude setup-token` to get one, then edit the file or "
+            "re-run with --token.",
+            file=sys.stderr,
+        )
+    return 0
+
+
+def cmd_unregister(args: argparse.Namespace) -> int:
+    """Remove this tool's entry from .mcp.json or ~/.claude.json."""
+    if args.scope == "user":
+        target = Path.home() / ".claude.json"
+    else:
+        target = Path(args.path).resolve() / ".mcp.json"
+
+    if not target.exists():
+        print(f"nothing to do: {target} does not exist", file=sys.stderr)
+        return 0
+
+    data = _read_json(target)
+    servers = data.get("mcpServers", {})
+    if args.name not in servers:
+        print(f"`{args.name}` not present in {target}", file=sys.stderr)
+        return 0
+    del servers[args.name]
+    target.write_text(json.dumps(data, indent=2) + "\n")
+    print(f"Removed `{args.name}` from {target}")
+    return 0
+
+
 # ----------------------------------------------------------------------------
 
 
@@ -150,6 +231,30 @@ def _resolve_root_path(start: str | None) -> Path:
     from memory_graph.storage.files import store_root
 
     return store_root(start) if start else store_root()
+
+
+def _resolve_binary_path(explicit: str | None) -> str | None:
+    """Find the absolute path to the `memory-graph` console entry."""
+    if explicit:
+        return str(Path(explicit).resolve())
+    found = shutil.which("memory-graph")
+    if found:
+        return str(Path(found).resolve())
+    # Fall back: try the entry inside the same venv as the current Python.
+    candidate = Path(sys.executable).parent / "memory-graph"
+    if candidate.exists():
+        return str(candidate.resolve())
+    return None
+
+
+def _read_json(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    text = path.read_text() or "{}"
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"refusing to overwrite malformed JSON at {path}: {exc}")
 
 
 def _open_store_or_die():
@@ -215,6 +320,48 @@ def build_parser() -> argparse.ArgumentParser:
     p_status = sub.add_parser("status", help="print store stats as JSON")
     p_status.add_argument("--path", default=None)
     p_status.set_defaults(func=cmd_status)
+
+    p_register = sub.add_parser(
+        "register",
+        help="write/merge the MCP server entry into .mcp.json or ~/.claude.json",
+    )
+    p_register.add_argument(
+        "--scope",
+        choices=["project", "user"],
+        default="project",
+        help="project (./.mcp.json, default) or user (~/.claude.json)",
+    )
+    p_register.add_argument("--path", default=".", help="project root for --scope=project")
+    p_register.add_argument(
+        "--name", default="memory-graph", help="MCP server name (default: memory-graph)"
+    )
+    p_register.add_argument(
+        "--token",
+        default=None,
+        help="CLAUDE_CODE_OAUTH_TOKEN value (default: read from env)",
+    )
+    p_register.add_argument(
+        "--binary",
+        default=None,
+        help="absolute path to the memory-graph binary (default: auto-detect)",
+    )
+    p_register.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite if an entry with this name already exists",
+    )
+    p_register.set_defaults(func=cmd_register)
+
+    p_unreg = sub.add_parser(
+        "unregister",
+        help="remove this tool's entry from .mcp.json or ~/.claude.json",
+    )
+    p_unreg.add_argument(
+        "--scope", choices=["project", "user"], default="project"
+    )
+    p_unreg.add_argument("--path", default=".")
+    p_unreg.add_argument("--name", default="memory-graph")
+    p_unreg.set_defaults(func=cmd_unregister)
 
     return parser
 

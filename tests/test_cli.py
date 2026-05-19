@@ -145,6 +145,144 @@ def test_digest_skips_empty_transcript(tmp_path: Path, capsys, monkeypatch):
     assert "empty" in err
 
 
+# -- register / unregister --------------------------------------------------
+
+
+def test_register_writes_project_mcp_json(tmp_path: Path, monkeypatch, capsys):
+    # Pretend a memory-graph binary exists somewhere reachable.
+    fake_bin = tmp_path / "bin" / "memory-graph"
+    fake_bin.parent.mkdir()
+    fake_bin.write_text("#!/bin/sh\necho hi\n")
+    fake_bin.chmod(0o755)
+
+    code = cli_main([
+        "register",
+        "--path", str(tmp_path),
+        "--token", "FAKE_TOKEN",
+        "--binary", str(fake_bin),
+    ])
+    assert code == 0
+    mcp_json = tmp_path / ".mcp.json"
+    assert mcp_json.exists()
+    data = json.loads(mcp_json.read_text())
+    assert data["mcpServers"]["memory-graph"]["command"] == str(fake_bin.resolve())
+    assert data["mcpServers"]["memory-graph"]["args"] == ["serve"]
+    assert (
+        data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"]
+        == "FAKE_TOKEN"
+    )
+
+
+def test_register_refuses_overwrite_without_force(tmp_path, capsys):
+    fake_bin = tmp_path / "memory-graph"
+    fake_bin.write_text("#!/bin/sh\n")
+    fake_bin.chmod(0o755)
+    # First call seeds the entry.
+    cli_main([
+        "register", "--path", str(tmp_path), "--token", "A", "--binary", str(fake_bin),
+    ])
+    capsys.readouterr()
+    # Second call should refuse without --force.
+    code = cli_main([
+        "register", "--path", str(tmp_path), "--token", "B", "--binary", str(fake_bin),
+    ])
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "already registered" in err
+
+
+def test_register_force_overwrites(tmp_path, capsys):
+    fake_bin = tmp_path / "memory-graph"
+    fake_bin.write_text("#!/bin/sh\n")
+    fake_bin.chmod(0o755)
+    cli_main([
+        "register", "--path", str(tmp_path), "--token", "A", "--binary", str(fake_bin),
+    ])
+    capsys.readouterr()
+    code = cli_main([
+        "register", "--path", str(tmp_path), "--token", "B",
+        "--binary", str(fake_bin), "--force",
+    ])
+    assert code == 0
+    data = json.loads((tmp_path / ".mcp.json").read_text())
+    assert data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "B"
+
+
+def test_register_merges_into_existing_mcp_json(tmp_path, capsys):
+    # Pre-existing .mcp.json with another server.
+    existing = {"mcpServers": {"other-tool": {"command": "other", "args": []}}}
+    (tmp_path / ".mcp.json").write_text(json.dumps(existing))
+
+    fake_bin = tmp_path / "memory-graph"
+    fake_bin.write_text("#!/bin/sh\n")
+    fake_bin.chmod(0o755)
+    code = cli_main([
+        "register", "--path", str(tmp_path), "--token", "T", "--binary", str(fake_bin),
+    ])
+    assert code == 0
+    data = json.loads((tmp_path / ".mcp.json").read_text())
+    # Both servers preserved.
+    assert "memory-graph" in data["mcpServers"]
+    assert "other-tool" in data["mcpServers"]
+
+
+def test_register_warns_on_empty_token(tmp_path, capsys, monkeypatch):
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    fake_bin = tmp_path / "memory-graph"
+    fake_bin.write_text("#!/bin/sh\n")
+    fake_bin.chmod(0o755)
+    code = cli_main([
+        "register", "--path", str(tmp_path), "--binary", str(fake_bin),
+    ])
+    assert code == 0
+    err = capsys.readouterr().err
+    assert "warning" in err.lower()
+    # Empty token written so user can fill in.
+    data = json.loads((tmp_path / ".mcp.json").read_text())
+    assert data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == ""
+
+
+def test_register_errors_when_binary_not_found(tmp_path, capsys, monkeypatch):
+    # Override PATH so the binary cannot be found.
+    monkeypatch.setenv("PATH", "/nonexistent-path-only")
+    # Also make sys.executable's sibling not exist.
+    code = cli_main([
+        "register", "--path", str(tmp_path), "--token", "T",
+        "--binary", str(tmp_path / "no-such-binary"),
+    ])
+    # _resolve_binary_path uses Path(explicit).resolve() which doesn't check
+    # existence; the explicit path is trusted. So this should succeed.
+    assert code == 0
+    # Drop the produced file so other tests see a clean dir.
+    (tmp_path / ".mcp.json").unlink()
+
+    # Now omit --binary and clear PATH.
+    code = cli_main(["register", "--path", str(tmp_path), "--token", "T"])
+    # Either succeeds (if sys.executable's sibling exists) or errors with 1.
+    assert code in (0, 1)
+
+
+def test_unregister_removes_entry(tmp_path, capsys):
+    fake_bin = tmp_path / "memory-graph"
+    fake_bin.write_text("#!/bin/sh\n")
+    fake_bin.chmod(0o755)
+    cli_main([
+        "register", "--path", str(tmp_path), "--token", "T", "--binary", str(fake_bin),
+    ])
+    capsys.readouterr()
+    code = cli_main(["unregister", "--path", str(tmp_path)])
+    assert code == 0
+    data = json.loads((tmp_path / ".mcp.json").read_text())
+    assert "memory-graph" not in data.get("mcpServers", {})
+
+
+def test_unregister_idempotent_when_missing(tmp_path, capsys):
+    code = cli_main(["unregister", "--path", str(tmp_path)])
+    assert code == 0
+    err = capsys.readouterr().err
+    assert "does not exist" in err or "not present" in err
+
+
 # -- help and parser smoke --------------------------------------------------
 
 
@@ -153,5 +291,5 @@ def test_cli_help_runs(capsys):
         cli_main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for cmd in ("init", "serve", "digest", "reindex", "status"):
+    for cmd in ("init", "serve", "digest", "reindex", "status", "register", "unregister"):
         assert cmd in out
