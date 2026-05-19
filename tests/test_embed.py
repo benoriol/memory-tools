@@ -50,10 +50,20 @@ def test_fake_embedder_different_texts_differ():
     e = FakeEmbedder(dim=64)
     a = e.embed("Postgres migration locking")
     b = e.embed("Frontend pagination cursor")
-    # Unrelated random vectors in 64-d should have small cosine.
+    # Disjoint vocabulary in 64-d → near zero.
     assert abs(cosine(a, b)) < 0.5
     # Identical input is exactly 1.0.
     assert pytest.approx(cosine(a, e.embed("Postgres migration locking"))) == 1.0
+
+
+def test_fake_embedder_overlap_correlates():
+    """Shared tokens should produce meaningfully higher cosine than disjoint."""
+    e = FakeEmbedder(dim=64)
+    base = e.embed("postgres migration locking issue")
+    overlap = e.embed("postgres migration breaks queries")
+    disjoint = e.embed("frontend pagination cursor api")
+    assert cosine(base, overlap) > 0.3
+    assert cosine(base, overlap) > cosine(base, disjoint)
 
 
 def test_fake_embedder_batch_matches_single():
