@@ -185,6 +185,78 @@ def memory_status() -> dict[str, Any]:
 
 
 # ----------------------------------------------------------------------------
+# Tools — orchestration. Each spawns a memory sub-agent via the Agent SDK.
+# Registered only if claude-agent-sdk is importable; otherwise stubbed with
+# a friendly error so the primitives still work without the SDK.
+# ----------------------------------------------------------------------------
+
+
+try:
+    import claude_agent_sdk  # noqa: F401
+
+    _AGENT_SDK_AVAILABLE = True
+except ImportError:
+    _AGENT_SDK_AVAILABLE = False
+
+
+@mcp.tool()
+def memory_remember(dump: str) -> dict[str, Any]:
+    """Decompose a free-form session summary into memory notes.
+
+    Pass a thorough description of what happened (experiments, decisions,
+    surprises, gotchas). The memory sub-agent decides on abstraction
+    levels, finds connections in the existing graph, writes the notes,
+    and supersedes any contradictions.
+    """
+    if not _AGENT_SDK_AVAILABLE:
+        return _sdk_missing("remember")
+    from memory_graph.orchestration import remember as _remember
+
+    synthesis = _remember(dump, store=get_store())
+    return {"synthesis": synthesis}
+
+
+@mcp.tool()
+def memory_retrieve(query: str, intent: str = "decide") -> dict[str, Any]:
+    """Surface relevant memories with citations.
+
+    Describe what you're working on or about to decide. `intent` is
+    "decide", "explore", or "verify" and shapes which edge types the
+    sub-agent walks. Returns a focused synthesis with `[id]` citations.
+    """
+    if not _AGENT_SDK_AVAILABLE:
+        return _sdk_missing("retrieve")
+    from memory_graph.orchestration import retrieve as _retrieve
+
+    synthesis = _retrieve(query, store=get_store(), intent=intent)
+    return {"synthesis": synthesis}
+
+
+@mcp.tool()
+def memory_compact(scope: str | None = None) -> dict[str, Any]:
+    """Run a consolidation pass (merges, hubs, supersessions) over a region.
+
+    `scope` is "cluster:X", "topic:Y", "recent", or None (sub-agent
+    picks). Returns a summary of changes made.
+    """
+    if not _AGENT_SDK_AVAILABLE:
+        return _sdk_missing("compact")
+    from memory_graph.orchestration import compact as _compact
+
+    synthesis = _compact(get_store(), scope=scope)
+    return {"synthesis": synthesis}
+
+
+def _sdk_missing(tool: str) -> dict[str, Any]:
+    return {
+        "error": (
+            f"`{tool}` requires the claude-agent-sdk dependency. "
+            "Install it with `pip install memory-graph-mcp[agent]`."
+        )
+    }
+
+
+# ----------------------------------------------------------------------------
 
 
 def _serialize_note(note) -> dict[str, Any]:
