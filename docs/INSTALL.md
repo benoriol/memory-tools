@@ -27,37 +27,47 @@ pipx install -e .
 
 `memory-graph` should now be on your PATH.
 
-## 3. Register the MCP server with Claude Code
-
-You have two options. Pick one.
-
-### Option A — project-local (recommended for trying it out)
-
-Only the project you're in will see the tool:
+## 3. Bootstrap the project (one command)
 
 ```bash
 cd ~/projects/your-project
 export CLAUDE_CODE_OAUTH_TOKEN=<paste the token from step 1>
-memory-graph register
+memory-graph setup
 ```
 
-That writes `./.mcp.json` with an absolute path to the binary and your
-token. Other projects are unaffected.
+That single command does all three of the per-project things in order:
 
-### Option B — user-global (every Claude Code session sees it)
+1. **register** — writes `./.mcp.json` with absolute binary path + token
+2. **init** — creates `./.memory-graph/{notes,_operator,_pending,...}`
+3. **install-claude-md** — appends the memory protocol to
+   `./CLAUDE.md` (creating it if absent), wrapped in sentinel comments
+   so the install command can be re-run without clobbering your edits.
+
+It's idempotent — re-running is a no-op. Pass `--force` to replace an
+existing `.mcp.json` entry or a stale CLAUDE.md section. Pass any of
+`--skip-register`, `--skip-init`, `--skip-claude-md` to do only some
+of the steps.
+
+### Doing the steps individually
+
+If you want more control (different CLAUDE.md path, user-scope MCP,
+etc.):
 
 ```bash
-export CLAUDE_CODE_OAUTH_TOKEN=<paste the token from step 1>
-memory-graph register --scope user
+memory-graph register [--scope project|user]   # → .mcp.json or ~/.claude.json
+memory-graph init                              # → .memory-graph/
+memory-graph install-claude-md [--target ...]  # → memory protocol section
 ```
 
-That merges the entry into `~/.claude.json`. Even with this, the
-server is dormant in any project that hasn't been `memory-graph init`'d
-— each `.memory-graph/` directory is the actual data boundary.
+`--scope user` makes the MCP server visible in every Claude Code
+session everywhere; the server stays dormant in any project that
+doesn't have a `.memory-graph/` directory. Most users want the default
+(project scope) so unrelated projects keep clean tool lists.
 
-### Manual alternative
+### Manual alternative (no CLI)
 
-If you prefer to write the config by hand, the file should look like:
+If you prefer to write the config by hand, `./.mcp.json` should look
+like:
 
 ```json
 {
@@ -73,7 +83,8 @@ If you prefer to write the config by hand, the file should look like:
 }
 ```
 
-Drop it as `./.mcp.json` (project) or merge into `~/.claude.json` (user).
+Drop it as `./.mcp.json` (project scope) or merge into `~/.claude.json`
+(user scope).
 
 ### Verify
 
@@ -87,53 +98,36 @@ memory-graph unregister             # project-local
 memory-graph unregister --scope user # user-global
 ```
 
-## 4. Initialize a project store
+## 4. Decide what to commit
+
+`memory-graph setup` produces three artifacts in your project:
+
+| File / dir          | What it is                       | Commit?                                              |
+|---------------------|----------------------------------|------------------------------------------------------|
+| `.mcp.json`         | MCP server registration + token  | Only if your team also uses memory-graph and you're OK with the token in git. Usually `.gitignore` it. |
+| `.memory-graph/`    | Notes + SQLite index             | Commit for shared team memory; `.gitignore` for per-person. The internal SQLite index is already gitignored either way (rebuildable from `notes/`). |
+| `CLAUDE.md` section | The memory protocol              | Yes — it's part of your project's instructions.      |
+
+To gitignore the registration + per-person notes:
 
 ```bash
-cd ~/projects/your-project
-memory-graph init
+echo ".mcp.json"        >> .gitignore
+echo ".memory-graph/"   >> .gitignore
 ```
 
-That creates `.memory-graph/` with:
+The protocol block in `CLAUDE.md` stays — it documents the workflow
+for the next session and for collaborators.
 
-```
-.memory-graph/
-├── notes/         <- markdown notes, one per memory
-├── _operator/     <- sub-agent's persistent working notes
-├── _pending/      <- deferred items (review queue, etc.)
-├── index.db       <- SQLite index (auto-rebuildable from notes/)
-└── config.yml     <- embedding model, etc.
-```
+The template at [`docs/CLAUDE.md.template`](./CLAUDE.md.template) is
+the same content as what `install-claude-md` writes, kept here for
+reference; the source of truth lives in the package at
+`src/memory_graph/templates/claude_protocol.md`.
 
-Decide whether to commit `.memory-graph/` to the repo. If you want
-team members to share memory, commit it (the project's `.gitignore`
-already excludes the SQLite index by default). If it's per-person,
-add `.memory-graph/` to the project root's `.gitignore`.
-
-## 5. Wire the memory protocol into the project's CLAUDE.md
-
-```bash
-memory-graph install-claude-md
-```
-
-That appends the bundled memory protocol — wrapped in HTML-comment
-sentinels — to `./CLAUDE.md` (or `./.claude/CLAUDE.md` as fallback).
-It's idempotent: re-running on an already-installed file is a no-op.
-If your project doesn't have a `CLAUDE.md` yet, pass `--create` to
-start a new one.
-
-Edit inside the sentinels to customize per project — the install
-command refuses to overwrite your edits unless you pass `--force`.
-
-To remove the section later:
+If you ever need to remove the protocol section:
 
 ```bash
 memory-graph uninstall-claude-md
 ```
-
-The block at [`docs/CLAUDE.md.template`](./CLAUDE.md.template) is the
-same content, kept here for reference; the source of truth lives in
-the package at `src/memory_graph/templates/claude_protocol.md`.
 
 ## Optional: Stop hook for automatic end-of-session digest
 

@@ -275,6 +275,76 @@ def cmd_install_claude_md(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_setup(args: argparse.Namespace) -> int:
+    """One-shot bootstrap: register + init + install-claude-md.
+
+    Each step is independently idempotent, so re-running `setup` on an
+    already-set-up project is safe.
+    """
+    project = Path(args.path).resolve()
+    print(f"[setup] memory-graph @ {project}")
+
+    rcs: list[tuple[str, int]] = []
+
+    if not args.skip_register:
+        print("\n[setup] (1/3) register")
+        ns = argparse.Namespace(
+            scope="project",
+            path=str(project),
+            name="memory-graph",
+            token=args.token,
+            binary=args.binary,
+            force=args.force,
+        )
+        rc = cmd_register(ns)
+        rcs.append(("register", rc))
+        if rc != 0 and not args.force:
+            # Most likely "already registered" — soft-fail, continue.
+            print("[setup]   (continuing; use --force to overwrite)")
+
+    if not args.skip_init:
+        print("\n[setup] (2/3) init")
+        ns = argparse.Namespace(path=str(project))
+        rc = cmd_init(ns)
+        rcs.append(("init", rc))
+        if rc != 0:
+            # `init` exits 1 if .memory-graph/ already exists — fine for setup.
+            print("[setup]   (continuing; existing store left intact)")
+
+    if not args.skip_claude_md:
+        print("\n[setup] (3/3) install-claude-md")
+        ns = argparse.Namespace(
+            path=str(project),
+            target=None,
+            force=args.force,
+            create=True,  # during setup, create CLAUDE.md if it's missing
+        )
+        rc = cmd_install_claude_md(ns)
+        rcs.append(("install-claude-md", rc))
+        if rc == 2:
+            print(
+                "[setup]   stale section in CLAUDE.md left alone "
+                "— pass --force to replace it."
+            )
+
+    # Tally.
+    print()
+    hard_failures = [(n, c) for n, c in rcs if c not in (0, 1, 2)]
+    if hard_failures:
+        print(
+            "[setup] one or more steps failed unexpectedly:",
+            ", ".join(f"{n}=exit {c}" for n, c in hard_failures),
+            file=sys.stderr,
+        )
+        return 1
+
+    print(
+        "[setup] done. If Claude Code is already running in this directory, "
+        "restart it so .mcp.json takes effect."
+    )
+    return 0
+
+
 def cmd_uninstall_claude_md(args: argparse.Namespace) -> int:
     """Remove the memory protocol section from a project's CLAUDE.md."""
     from memory_graph import claude_md
@@ -503,6 +573,30 @@ def build_parser() -> argparse.ArgumentParser:
     p_uninst.add_argument("--path", default=".")
     p_uninst.add_argument("--target", default=None)
     p_uninst.set_defaults(func=cmd_uninstall_claude_md)
+
+    p_setup = sub.add_parser(
+        "setup",
+        help="one-shot project bootstrap (register + init + install-claude-md)",
+    )
+    p_setup.add_argument("--path", default=".", help="project root (default: cwd)")
+    p_setup.add_argument(
+        "--token", default=None,
+        help="CLAUDE_CODE_OAUTH_TOKEN to bake into .mcp.json "
+        "(default: read from $CLAUDE_CODE_OAUTH_TOKEN)",
+    )
+    p_setup.add_argument(
+        "--binary", default=None,
+        help="absolute path to the memory-graph binary (default: auto-detect)",
+    )
+    p_setup.add_argument(
+        "--force", action="store_true",
+        help="overwrite existing .mcp.json entry and replace any stale "
+        "memory protocol section in CLAUDE.md",
+    )
+    p_setup.add_argument("--skip-register", action="store_true")
+    p_setup.add_argument("--skip-init", action="store_true")
+    p_setup.add_argument("--skip-claude-md", action="store_true")
+    p_setup.set_defaults(func=cmd_setup)
 
     return parser
 

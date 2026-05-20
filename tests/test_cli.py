@@ -283,6 +283,110 @@ def test_unregister_idempotent_when_missing(tmp_path, capsys):
     assert "does not exist" in err or "not present" in err
 
 
+# -- setup (one-shot bootstrap) --------------------------------------------
+
+
+def _bin(tmp_path: Path) -> Path:
+    p = tmp_path / "memory-graph"
+    p.write_text("#!/bin/sh\n")
+    p.chmod(0o755)
+    return p
+
+
+def test_setup_fresh_project(tmp_path, capsys):
+    """register + init + install-claude-md should all succeed on a fresh dir."""
+    binary = _bin(tmp_path)
+    project = tmp_path / "proj"
+    project.mkdir()
+
+    code = cli_main([
+        "setup", "--path", str(project),
+        "--token", "T", "--binary", str(binary),
+    ])
+    assert code == 0
+    assert (project / ".mcp.json").exists()
+    assert (project / ".memory-graph").is_dir()
+    claude_md = project / "CLAUDE.md"
+    assert claude_md.exists()
+    assert "memory_remember" in claude_md.read_text()
+    out = capsys.readouterr().out
+    assert "(1/3)" in out and "(2/3)" in out and "(3/3)" in out
+    assert "done" in out
+
+
+def test_setup_is_idempotent(tmp_path, capsys):
+    binary = _bin(tmp_path)
+    project = tmp_path / "proj"
+    project.mkdir()
+
+    cli_main([
+        "setup", "--path", str(project),
+        "--token", "T", "--binary", str(binary),
+    ])
+    capsys.readouterr()
+    # Re-run — none of the steps should hard-fail, even though all three
+    # are already done.
+    code = cli_main([
+        "setup", "--path", str(project),
+        "--token", "T", "--binary", str(binary),
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    # The output should report soft conditions, not hard failures.
+    assert "already" in out or "current" in out
+
+
+def test_setup_force_replaces_register_entry(tmp_path, capsys):
+    binary = _bin(tmp_path)
+    project = tmp_path / "proj"
+    project.mkdir()
+    cli_main([
+        "setup", "--path", str(project),
+        "--token", "OLD", "--binary", str(binary),
+    ])
+    capsys.readouterr()
+    cli_main([
+        "setup", "--path", str(project),
+        "--token", "NEW", "--binary", str(binary), "--force",
+    ])
+    data = json.loads((project / ".mcp.json").read_text())
+    assert (
+        data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"]
+        == "NEW"
+    )
+
+
+def test_setup_skip_flags(tmp_path, capsys):
+    binary = _bin(tmp_path)
+    project = tmp_path / "proj"
+    project.mkdir()
+
+    code = cli_main([
+        "setup", "--path", str(project),
+        "--token", "T", "--binary", str(binary),
+        "--skip-init", "--skip-claude-md",
+    ])
+    assert code == 0
+    # Only register ran.
+    assert (project / ".mcp.json").exists()
+    assert not (project / ".memory-graph").exists()
+    assert not (project / "CLAUDE.md").exists()
+
+
+def test_setup_creates_claude_md_when_missing(tmp_path):
+    binary = _bin(tmp_path)
+    project = tmp_path / "proj"
+    project.mkdir()
+    cli_main([
+        "setup", "--path", str(project),
+        "--token", "T", "--binary", str(binary),
+        "--skip-register", "--skip-init",
+    ])
+    cm = project / "CLAUDE.md"
+    assert cm.exists()
+    assert "memory_remember" in cm.read_text()
+
+
 # -- help and parser smoke --------------------------------------------------
 
 
@@ -291,5 +395,8 @@ def test_cli_help_runs(capsys):
         cli_main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for cmd in ("init", "serve", "digest", "reindex", "status", "register", "unregister"):
+    for cmd in (
+        "init", "serve", "digest", "reindex", "status",
+        "register", "unregister", "setup", "install-claude-md",
+    ):
         assert cmd in out

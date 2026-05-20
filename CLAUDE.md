@@ -39,31 +39,19 @@ pipx inject memory-graph-mcp claude-agent-sdk
 # (or simply: pipx reinstall memory-graph-mcp)
 ```
 
-### Per new project — five commands
+### Per new project — one command
 
 ```bash
 cd /path/to/the/new/project
 
-# 1. Register the MCP server with Claude Code, project-scoped
-memory-graph register
-#   Writes ./.mcp.json with an absolute path to the binary and your
-#   OAuth token (read from $CLAUDE_CODE_OAUTH_TOKEN). Other projects
-#   are unaffected.
+# One-shot: register MCP + init store + install CLAUDE.md protocol
+memory-graph setup
+#   Idempotent. Re-runs are safe — each step reports "already done"
+#   and continues. Pass --force to replace an existing .mcp.json entry
+#   or a stale CLAUDE.md section. --skip-register / --skip-init /
+#   --skip-claude-md to do only some of the steps.
 
-# 2. Initialize the per-project store
-memory-graph init
-#   Creates ./.memory-graph/ with notes/, _operator/, _pending/,
-#   config.yml, and an internal .gitignore.
-
-# 3. Append the memory protocol to the project's CLAUDE.md
-memory-graph install-claude-md
-#   Picks up ./CLAUDE.md (or ./.claude/CLAUDE.md as fallback), wraps the
-#   inserted block in sentinel comments, refuses to clobber existing
-#   custom edits without --force, and is idempotent on re-runs. Edit
-#   inside the sentinels to customize triggers per project.
-#   Companion: `memory-graph uninstall-claude-md` removes it cleanly.
-
-# 4. (Optional) Stop-hook for auto-digest at session end
+# (Optional) Stop-hook for auto-digest at session end
 mkdir -p .claude
 cat > .claude/settings.json <<'EOF'
 {
@@ -75,9 +63,18 @@ cat > .claude/settings.json <<'EOF'
 }
 EOF
 
-# 5. Verify
+# (Optional) Verify
 memory-graph status
 #   Should print JSON with total_nodes: 0 (fresh store).
+```
+
+If you'd rather run the three steps individually (more control, e.g.
+choose your own CLAUDE.md target file), `setup` is sugar for:
+
+```bash
+memory-graph register             # → .mcp.json
+memory-graph init                 # → .memory-graph/
+memory-graph install-claude-md    # → memory protocol in CLAUDE.md
 ```
 
 Restart any open Claude Code session in this directory. The 13
