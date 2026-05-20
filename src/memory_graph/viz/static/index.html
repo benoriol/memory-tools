@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>memory-graph viewer</title>
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161a21;
+    --panel-2: #1d2230;
+    --text: #d7dae0;
+    --muted: #8a8f9c;
+    --accent: #6aa1ff;
+    --border: #262b36;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+               font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+  #app { display: grid; grid-template-columns: 280px 1fr 380px; height: 100vh; }
+  .col { overflow: auto; border-right: 1px solid var(--border); }
+  .col:last-child { border-right: 0; border-left: 1px solid var(--border); }
+  #network { background: #0b0d11; }
+  h1, h2, h3 { font-weight: 600; }
+  h1 { font-size: 14px; margin: 16px; letter-spacing: 0.04em; text-transform: uppercase;
+       color: var(--muted); }
+  h2 { font-size: 13px; margin: 12px 16px 6px; color: var(--muted); }
+  h3 { font-size: 14px; margin: 0 0 6px 0; }
+  .stats, .filters, .details { padding: 0 16px 12px; font-size: 13px; line-height: 1.5; }
+  .stats .row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .stats .row .k { color: var(--muted); }
+  .filters label { display: block; padding: 3px 0; cursor: pointer; user-select: none; }
+  .filters input[type=checkbox] { margin-right: 6px; vertical-align: -2px; }
+  .filters .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+                     margin-right: 6px; vertical-align: middle; }
+  .search { width: calc(100% - 32px); margin: 8px 16px 12px; padding: 6px 8px;
+            background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+            border-radius: 4px; outline: none; }
+  .search:focus { border-color: var(--accent); }
+  .details .pill { display: inline-block; padding: 2px 6px; margin-right: 4px;
+                   border-radius: 3px; background: var(--panel-2); font-size: 11px;
+                   color: var(--muted); }
+  .details .title { font-size: 15px; font-weight: 600; margin: 4px 0 8px; }
+  .details .summary { color: var(--text); margin-bottom: 12px; }
+  .details .body { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo,
+                   monospace; font-size: 12px; background: var(--panel-2); padding: 10px;
+                   border-radius: 4px; max-height: 38vh; overflow: auto; }
+  .details .edges { margin-top: 12px; }
+  .details .edges .edge { font-size: 12px; padding: 2px 0; }
+  .details .edges .edge .t { color: var(--muted); margin-right: 6px; }
+  .empty { color: var(--muted); padding: 12px 16px; font-style: italic; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="col" id="left">
+    <h1>memory-graph</h1>
+    <h2>store</h2>
+    <div class="stats" id="stats">loading…</div>
+
+    <h2>filter by kind</h2>
+    <div class="filters" id="kind-filters"></div>
+
+    <h2>filter by status</h2>
+    <div class="filters" id="status-filters"></div>
+
+    <h2>search</h2>
+    <input class="search" id="search" placeholder="title or summary…" />
+  </div>
+
+  <div id="network"></div>
+
+  <div class="col" id="right">
+    <h1>note</h1>
+    <div class="details" id="details">
+      <div class="empty">click a node to see its content.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---- palette --------------------------------------------------------------
+
+// Kind → color. Picked to be readable on the dark canvas.
+const KIND_COLORS = {
+  capture:     "#9aa4b4",
+  lesson:      "#6aa1ff",
+  principle:   "#7ee787",
+  decision:    "#c084fc",
+  experiment:  "#f5a25d",
+  incident:    "#f87171",
+  reference:   "#5eead4",
+  transition:  "#f0abfc",
+  archaeology: "#b08968",
+  next_step:   "#facc15",
+};
+const DEFAULT_COLOR = "#9aa4b4";
+
+// Edge type → color.
+const EDGE_COLORS = {
+  generalizes:  "#6aa1ff",
+  specializes: "#6aa1ff",
+  derived_from: "#7ee787",
+  supports:     "#7ee787",
+  contradicts:  "#f87171",
+  supersedes:   "#f5a25d",
+  corrects:     "#f87171",
+  related:      "#5b6172",
+  coupled_with: "#c084fc",
+  applies_to:   "#5eead4",
+  impacts:      "#facc15",
+  informs:      "#f0abfc",
+  confirmed_by: "#7ee787",
+};
+const DEFAULT_EDGE_COLOR = "#3d4252";
+
+// Style by status.
+const STATUS_FONT = {
+  superseded:  "#666b78",
+  corrected:   "#666b78",
+  disproven:   "#666b78",
+  stale:       "#666b78",
+  archived:    "#555a66",
+  active:      "#d7dae0",
+  validated:   "#d7dae0",
+  unsure:      "#facc15",
+  disputed:    "#f87171",
+  open:        "#5eead4",
+};
+
+// ---- state ---------------------------------------------------------------
+
+let G = null;          // raw graph JSON
+let nodesDS, edgesDS;  // vis DataSets (current view)
+let network = null;
+let kindEnabled = new Set();
+let statusEnabled = new Set();
+let searchQ = "";
+
+// ---- fetch + render ------------------------------------------------------
+
+async function load() {
+  const r = await fetch("/api/graph");
+  if (!r.ok) { showError("failed to load /api/graph"); return; }
+  G = await r.json();
+  Object.keys(G.stats.by_kind).forEach(k => kindEnabled.add(k));
+  // Status filter: enable all that appear in the data.
+  const statusSet = new Set(G.nodes.map(n => n.status));
+  statusSet.forEach(s => statusEnabled.add(s));
+  renderStats();
+  renderKindFilters();
+  renderStatusFilters(statusSet);
+  buildNetwork();
+  applyFilter();
+}
+
+function showError(msg) {
+  document.getElementById("stats").innerHTML =
+    `<div class="empty" style="color:#f87171">${msg}</div>`;
+}
+
+function renderStats() {
+  const el = document.getElementById("stats");
+  const s = G.stats;
+  let html = "";
+  html += row("nodes", s.total_nodes);
+  html += row("edges", s.total_edges);
+  el.innerHTML = html;
+}
+
+function row(k, v) {
+  return `<div class="row"><span class="k">${esc(k)}</span><span>${esc(v)}</span></div>`;
+}
+
+function renderKindFilters() {
+  const el = document.getElementById("kind-filters");
+  const counts = G.stats.by_kind;
+  const kinds = Object.keys(counts).sort();
+  el.innerHTML = kinds.map(k => {
+    const color = KIND_COLORS[k] || DEFAULT_COLOR;
+    return `<label>
+      <input type="checkbox" data-kind="${esc(k)}" checked />
+      <span class="swatch" style="background:${color}"></span>
+      ${esc(k)} <span style="color:var(--muted)">(${counts[k]})</span>
+    </label>`;
+  }).join("");
+  el.querySelectorAll("input").forEach(cb => cb.addEventListener("change", e => {
+    const k = e.target.dataset.kind;
+    if (e.target.checked) kindEnabled.add(k); else kindEnabled.delete(k);
+    applyFilter();
+  }));
+}
+
+function renderStatusFilters(statusSet) {
+  const el = document.getElementById("status-filters");
+  const statuses = [...statusSet].sort();
+  el.innerHTML = statuses.map(s => `<label>
+    <input type="checkbox" data-status="${esc(s)}" checked />
+    <span class="swatch" style="background:${STATUS_FONT[s] || '#9aa4b4'}"></span>
+    ${esc(s)}
+  </label>`).join("");
+  el.querySelectorAll("input").forEach(cb => cb.addEventListener("change", e => {
+    const s = e.target.dataset.status;
+    if (e.target.checked) statusEnabled.add(s); else statusEnabled.delete(s);
+    applyFilter();
+  }));
+}
+
+document.getElementById("search").addEventListener("input", e => {
+  searchQ = e.target.value.trim().toLowerCase();
+  applyFilter();
+});
+
+function buildNetwork() {
+  const container = document.getElementById("network");
+  nodesDS = new vis.DataSet([]);
+  edgesDS = new vis.DataSet([]);
+  network = new vis.Network(container, { nodes: nodesDS, edges: edgesDS }, {
+    nodes: {
+      shape: "dot",
+      size: 12,
+      borderWidth: 0,
+      font: { color: "#d7dae0", size: 13, face: "system-ui" },
+    },
+    edges: {
+      smooth: { type: "dynamic" },
+      arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+      font: { color: "#8a8f9c", size: 10, align: "middle", strokeWidth: 0,
+              background: "#0b0d11" },
+    },
+    physics: {
+      stabilization: { iterations: 220 },
+      barnesHut: { gravitationalConstant: -8000, springLength: 120,
+                   springConstant: 0.04, avoidOverlap: 0.15 },
+    },
+    interaction: { hover: true, tooltipDelay: 200 },
+  });
+  network.on("click", params => {
+    if (params.nodes && params.nodes.length) {
+      loadNote(params.nodes[0]);
+    }
+  });
+}
+
+function applyFilter() {
+  if (!G || !network) return;
+  const matches = n => {
+    if (!kindEnabled.has(n.kind)) return false;
+    if (!statusEnabled.has(n.status)) return false;
+    if (searchQ && !(
+      (n.title || "").toLowerCase().includes(searchQ) ||
+      (n.summary || "").toLowerCase().includes(searchQ)
+    )) return false;
+    return true;
+  };
+  const visibleIds = new Set();
+  const nextNodes = G.nodes.filter(matches).map(n => {
+    visibleIds.add(n.id);
+    return {
+      id: n.id,
+      label: shortLabel(n.title || n.id),
+      title: tooltipFor(n),
+      color: KIND_COLORS[n.kind] || DEFAULT_COLOR,
+      font: { color: STATUS_FONT[n.status] || "#d7dae0" },
+    };
+  });
+  const nextEdges = G.edges
+    .filter(e => visibleIds.has(e.from) && visibleIds.has(e.to))
+    .map((e, i) => ({
+      id: "e" + i,
+      from: e.from,
+      to: e.to,
+      label: e.type,
+      color: { color: EDGE_COLORS[e.type] || DEFAULT_EDGE_COLOR },
+    }));
+  nodesDS.clear(); nodesDS.add(nextNodes);
+  edgesDS.clear(); edgesDS.add(nextEdges);
+}
+
+function shortLabel(s) {
+  if (!s) return "";
+  s = s.trim();
+  if (s.length <= 38) return s;
+  return s.slice(0, 36) + "…";
+}
+
+function tooltipFor(n) {
+  const div = document.createElement("div");
+  div.innerHTML = `<div style="max-width:340px;font-family:system-ui">
+    <div style="color:#9aa4b4;font-size:11px">${esc(n.kind)} · ${esc(n.status)}</div>
+    <div style="font-weight:600;margin:2px 0">${esc(n.title || "")}</div>
+    <div style="color:#d7dae0">${esc(n.summary || "")}</div>
+    <div style="color:#666b78;font-size:10px;margin-top:4px;font-family:ui-monospace">
+      ${esc(n.id)}
+    </div>
+  </div>`;
+  return div;
+}
+
+async function loadNote(id) {
+  const r = await fetch("/api/note/" + encodeURIComponent(id));
+  if (!r.ok) {
+    document.getElementById("details").innerHTML =
+      `<div class="empty">could not load ${esc(id)}</div>`;
+    return;
+  }
+  const n = await r.json();
+  renderDetails(n);
+}
+
+function renderDetails(n) {
+  const el = document.getElementById("details");
+  const pills = [
+    pill(n.kind, KIND_COLORS[n.kind]),
+    pill(n.status, STATUS_FONT[n.status]),
+    n.happened_at ? pill("happened: " + new Date(n.happened_at).toISOString().slice(0,10)) : "",
+    n.last_verified_at ? pill("verified: " + new Date(n.last_verified_at).toISOString().slice(0,10)) : "",
+  ].join("");
+  const tags = (n.tags || []).map(t => pill("#" + t)).join("");
+  const out = (n.edges || []).map(e => `
+    <div class="edge"><span class="t">${esc(e.type)} →</span>
+    <a href="#" data-id="${esc(e.to)}" class="id">${esc(e.to)}</a></div>
+  `).join("");
+  const inc = (n.incoming || []).map(e => `
+    <div class="edge"><span class="t">${esc(e.type)} ←</span>
+    <a href="#" data-id="${esc(e.from)}" class="id">${esc(e.from)}</a></div>
+  `).join("");
+  const anchors = (n.anchors || []).map(a => `
+    <div class="edge"><span class="t">anchor:</span>
+    <span class="id">${esc(a.path)}${a.pattern ? " : " + esc(a.pattern) : ""}</span></div>
+  `).join("");
+  el.innerHTML = `
+    <div>${pills}</div>
+    <div class="title">${esc(n.title || "(no title)")}</div>
+    <div class="summary">${esc(n.summary || "")}</div>
+    <div style="margin:6px 0">${tags}</div>
+    <div class="body">${esc(n.body_markdown || "(no body)")}</div>
+    ${out ? `<div class="edges"><h3>outgoing</h3>${out}</div>` : ""}
+    ${inc ? `<div class="edges"><h3>incoming</h3>${inc}</div>` : ""}
+    ${anchors ? `<div class="edges"><h3>anchors</h3>${anchors}</div>` : ""}
+    <div class="edges"><h3>id</h3><div class="id">${esc(n.id)}</div></div>
+  `;
+  el.querySelectorAll("a[data-id]").forEach(a => {
+    a.addEventListener("click", ev => {
+      ev.preventDefault();
+      const id = a.dataset.id;
+      loadNote(id);
+      if (network && nodesDS.get(id)) {
+        network.focus(id, { scale: 1.2, animation: true });
+        network.selectNodes([id]);
+      }
+    });
+  });
+}
+
+function pill(text, color) {
+  if (!text) return "";
+  const style = color ? ` style="color:${color}"` : "";
+  return `<span class="pill"${style}>${esc(text)}</span>`;
+}
+
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+load();
+</script>
+</body>
+</html>

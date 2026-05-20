@@ -201,6 +201,20 @@ def cmd_register(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_viz(args: argparse.Namespace) -> int:
+    """Serve a local web viewer for the project's memory graph."""
+    from memory_graph.viz import serve
+
+    root = _resolve_root_path(args.path)
+    serve(
+        root,
+        port=args.port,
+        host=args.host,
+        open_browser=not args.no_browser,
+    )
+    return 0
+
+
 def cmd_unregister(args: argparse.Namespace) -> int:
     """Remove this tool's entry from .mcp.json or ~/.claude.json."""
     if args.scope == "user":
@@ -362,6 +376,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_unreg.add_argument("--path", default=".")
     p_unreg.add_argument("--name", default="memory-graph")
     p_unreg.set_defaults(func=cmd_unregister)
+
+    p_viz = sub.add_parser(
+        "viz", help="serve a local web viewer for the memory graph"
+    )
+    p_viz.add_argument(
+        "--path", default=None,
+        help="project root containing .memory-graph/ (default: walk up from cwd)",
+    )
+    p_viz.add_argument("--port", type=int, default=8765)
+    p_viz.add_argument("--host", default="127.0.0.1")
+    p_viz.add_argument(
+        "--no-browser", action="store_true",
+        help="don't auto-open the browser",
+    )
+    p_viz.set_defaults(func=cmd_viz)
 
     return parser
 
