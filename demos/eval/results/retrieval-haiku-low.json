@@ -1,0 +1,365 @@
+{
+  "model": "claude-haiku-4-5-20251001",
+  "effort": "low",
+  "tiers": {
+    "easy": {
+      "mean_score": 0.85,
+      "task_count": 5
+    },
+    "medium": {
+      "mean_score": 0.8,
+      "task_count": 5
+    },
+    "hard": {
+      "mean_score": 1.0,
+      "task_count": 5
+    }
+  },
+  "tasks": [
+    {
+      "id": "E1-billing-db",
+      "tier": "easy",
+      "question": "What database did the billing team choose, and why?",
+      "intent": "decide",
+      "synthesis": "## Synthesis\n\nThe billing team chose **Postgres 16** [01KS3QHTTPEAM5ES73AKE850A7] as their system of record. The decision hinges on two core requirements: Postgres's row-level locking capabilities (critical for safe invoice generation) and ACID guarantees, which are essential for financial correctness.\n\nNoSQL alternatives were explicitly rejected because reconciliation across mixed currencies is significantly harder in those systems \u2014 a key constraint for a billing platform that likely handles payments in multiple currencies.\n\n---\n\n## Cited\n\n- **01KS3QHTTPEAM5ES73AKE850A7** \u2014 `decision` | Postgres 16 with row-level locking for invoice generation; ACID needed for financial correctness\n\n---\n\n## Caveats\n\nNone identified. The note is a clean, active decision with high confidence (1.0).",
+      "in_tokens": 23,
+      "out_tokens": 1173,
+      "seconds": 12.9,
+      "must_hits": [
+        "Postgres",
+        "ACID"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "row-level lock",
+        "financial"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.5,
+      "score": 1.0
+    },
+    {
+      "id": "E2-money-storage",
+      "tier": "easy",
+      "question": "How are monetary amounts stored in the billing schema?",
+      "intent": "decide",
+      "synthesis": "The memory graph has no existing notes about billing schema or monetary amount storage. This appears to be a new topic for this project.\n\nTo help you decide, I'd like to clarify your context:\n\n1. **Are you asking about:**\n   - How it's *currently* stored in an existing codebase (so I should search the files)?\n   - What approach you *should* use for a new billing schema you're designing?\n   - A previous decision that was made (that should be captured in memory)?\n\n2. **What's the decision you're facing?**\n   - Choosing between decimal vs. integer (e.g., storing cents) vs. float?\n   - Picking a database column type?\n   - Deciding on precision/rounding strategy?\n\n3. **Project context:**\n   - Is there existing billing code I should examine?\n   - Are there specific constraints (currency types, ledger requirements, etc.)?\n\nLet me know, and I can either search the codebase for current patterns, help you think through the design decision, or capture a decision once you've made it.",
+      "in_tokens": 18,
+      "out_tokens": 1034,
+      "seconds": 11.1,
+      "must_hits": [],
+      "must_missed": [
+        "BIGINT",
+        "minor units"
+      ],
+      "bonus_hits": [
+        "cents",
+        "integer"
+      ],
+      "must_score": 0.0,
+      "bonus_score": 0.5,
+      "score": 0.5
+    },
+    {
+      "id": "E3-trial-abuse",
+      "tier": "easy",
+      "question": "How do we prevent free-trial abuse?",
+      "intent": "decide",
+      "synthesis": "No direct memories on free-trial abuse exist yet. Based on your intent to **decide**, here's what frames this choice:\n\n## synthesis\n\nThe platform uses **usage-based billing** [01KS3QHVEASEZ2FGT4VKJJR8ZS] \u2014 pricing per million events with a monthly allowance \u2014 which creates natural exposure to trial abuse: a malicious actor could sign up, push high-volume traffic during a free tier, then churn. The **defense-in-depth principle** [01KS3QHTNWTDGB8ST5W3JSD6D3] is your north star here \u2014 no single control (payment requirement, email verification, rate limit, usage ceiling) will stop all abuse vectors.\n\nThe platform already owns its **billing engine in-house** [01KS3QHTT0G798G7P2AFH136M8] rather than outsourcing to Stripe Billing or Recurly. This is a constraint, but it also means you have direct visibility into trial mechanics and can couple abuse detection tightly with usage metering.\n\nYou have precedent for handling edge cases: the **dunning ladder** [01KS3QHV6ED58F713Q48Z8HEMY] already exists (1d, 3d, 7d retries + suspend). That's a good pattern \u2014 layered responses rather than binary block/allow.\n\n## key tension\n\nThe constraint to own billing in-house means you can't lean on a third-party to handle trial abuse policy (e.g. Stripe's Radar). Abuse detection and policy enforcement become part of your core system.\n\n## also_relevant\n\n- **Observability** [01KS3QHW6CPDM4ZHX3VRG1ZN8G]: you have Grafana + Loki, so you can spot anomalous ingest patterns (sudden spikes, many small accounts, repeated churn cycles) in near real-time\n- **Incident review culture** [01KS3QHW5PGTPK62JEC11QGYZT]: if you ship an abuse policy that breaks legitimate use, you'll write it down blameless and iterate\n\n## caveats\n\n**No existing policy yet.** The graph has no `user_said` note constraining your approach (e.g. \"we accept N% fraud loss\" or \"never require payment upfront\"). You're starting from scratch, which is good \u2014 but worth clarifying with the founder: is trial abuse a known problem, or a preemptive hedge? The answer changes the investment level.\n\n---\n\n## cited\n\n| id | kind | summary |\n|---|---|---|\n| 01KS3QHVEASEZ2FGT4VKJJR8ZS | decision | Ingest priced per million events with bundled monthly allowance. Overage billed at end of month. |\n| 01KS3QHTNWTDGB8ST5W3JSD6D3 | principle | No single security control is sufficient. SameSite, CSRF tokens, Origin checks, and Referrer-Policy each catch different attack classes. |\n| 01KS3QHTT0G798G7P2AFH136M8 | user_said | Cannot use Stripe Billing / Recurly / etc. \u2014 must own the billing engine in-house. |\n| 01KS3QHV6ED58F713Q48Z8HEMY | decision | On payment failure: retry at +1d (smart-retry), +3d (with email), +7d (suspend service). |\n| 01KS3QHW6CPDM4ZHX3VRG1ZN8G | decision | All services emit OTLP traces and metrics; Grafana dashboards and Loki for logs. |\n| 01KS3QHW5PGTPK62JEC11QGYZT | decision | Every Sev-2+ gets a written postmortem within 5 business days. No individual blame; focus on systems and contributing factors. |",
+      "in_tokens": 46,
+      "out_tokens": 4100,
+      "seconds": 42.8,
+      "must_hits": [
+        "rate"
+      ],
+      "must_missed": [
+        "disposable email"
+      ],
+      "bonus_hits": [
+        "BIN"
+      ],
+      "must_score": 0.5,
+      "bonus_score": 0.25,
+      "score": 0.75
+    },
+    {
+      "id": "E4-postmortems",
+      "tier": "easy",
+      "question": "What's the policy on incident postmortems?",
+      "intent": "decide",
+      "synthesis": "I'll search the memory graph for context on incident postmortems and related practices.\nLet me adjust the search to include the kind parameter:\n## Synthesis\n\nYour postmortem policy is: **Every Sev-2+ incident gets a written postmortem within 5 business days, with a blameless focus** [01KS3QHW5PGTPK62JEC11QGYZT]. The approach emphasizes systems and contributing factors rather than individual accountability\u2014aligned with industry best practice and designed to capture lessons while context is still fresh.\n\nThe policy currently covers the scope (Sev-2+), timeline (5 days), and cultural tone (blameless), but the memory graph doesn't yet capture operational detail like who leads the postmortem, what template is used, or how findings are tracked into action items.\n\n## Cited\n\n- **01KS3QHW5PGTPK62JEC11QGYZT** (decision, active): \"Every Sev-2+ gets a written postmortem within 5 business days. No individual blame; focus on systems and contributing factors.\"\n\n## Also Relevant\n\nIf you're about to *refine* this policy, you may want to capture:\n- Who owns running postmortems (incident commander? on-call? dedicated role)?\n- What's the postmortem template/sections?\n- How are action items tracked; who owns follow-up?\n- Do Sev-1 incidents follow a different cadence?\n- Is there a threshold below Sev-2 where postmortems *don't* happen (and why)?\n\n## Caveats\n\nNone\u2014the policy is clear and active. The graph is sparse enough that there are no conflicts or supersessions to flag.",
+      "in_tokens": 32,
+      "out_tokens": 2298,
+      "seconds": 25.2,
+      "must_hits": [
+        "blameless",
+        "5"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "Sev-2",
+        "business days"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.5,
+      "score": 1.0
+    },
+    {
+      "id": "E5-versioning",
+      "tier": "easy",
+      "question": "How do we version our public API?",
+      "intent": "decide",
+      "synthesis": "## Synthesis\n\nYour API versioning strategy is established and proven: **use URL path prefixes** (`/v1/`, `/v2/`, etc.) with major-version-only semantics. This was chosen over header-based negotiation precisely because client SDKs in customer hands made the path-based approach simpler to communicate and debug [01KS3QHWBP5BGXBT1D7PK4QBD5].\n\nWhen you introduce a breaking change, you've committed to a **12-month deprecation window**: once announced, the old endpoint stays live for a full year, with customers receiving monthly reminder emails in the final quarter. This balances customer friction against the engineering cost of maintaining multiple code paths [01KS3QHWEHVBHD4AEQS3DVYFBT].\n\n## Cited\n\n| id | kind | summary |\n|---|---|---|\n| `01KS3QHWBP5BGXBT1D7PK4QBD5` | decision | Public APIs use /v1/ prefix; major-version-only versioning. No header-based negotiation. |\n| `01KS3QHWEHVBHD4AEQS3DVYFBT` | decision | Once announced, a deprecated endpoint is supported for 12 months. Customers get monthly nag emails in the last quarter. |\n\n## Also Relevant\n\n- **Error versioning**: Do you version error codes and schemas the same way, or keep them stable across versions? Worth deciding if you haven't.\n- **Deprecation scope**: Does the 12-month clock start from announcement date, or from first code deployment? May want to formalize.\n- **Minor versions**: These decisions cover breaking (major) changes. Should non-breaking additions use minor versions (v1.1, v1.2) or keep path-only for major?\n\n## Caveats\n\nNone. Both decisions are active, high-confidence, and have no conflicting or superseded notes. No user-stated constraints tension with the current approach. If your use case is different from the one these decisions were made for, surface that and we can reassess.",
+      "in_tokens": 32,
+      "out_tokens": 2302,
+      "seconds": 23.4,
+      "must_hits": [
+        "URL",
+        "/v1"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "major",
+        "12-month"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.5,
+      "score": 1.0
+    },
+    {
+      "id": "M1-sso-mfa",
+      "tier": "medium",
+      "question": "What auth constraints apply specifically to our enterprise customers?",
+      "intent": "decide",
+      "synthesis": "Let me retry without the optional filters:\n## Synthesis\n\n**Enterprise authentication is mandated to use SSO exclusively.** Your enterprise customers require SAML/OIDC authentication paths with no password-only fallback [01KS3QHSNGQ2VATM3TQEBCEGQM]. This comes directly from Q2 enterprise contract reviews and is a hard requirement for enterprise tiers.\n\n**The baseline auth architecture supports this.** Sessions use HttpOnly+Secure+SameSite=Lax cookies for browsers and bearer tokens in the Authorization header for mobile clients [01KS3QHTF94Q2AX69ZVYB8TRVD]. Refresh tokens are single-use and rotated on each refresh to catch token theft [01KS3QHTH329M4Z1HZZD1XDPT0]. Where passwords exist (likely for non-enterprise tiers), they use Argon2id (m=64MB, t=3, p=4) for GPU-resistance [01KS3QHTDSMFVY1S2GXSY0YYJ5].\n\n**Scale consideration.** Enterprise customers push ~10k events/sec at peak [01KS3QHVG17QHN919EM1ABZKHK], so your auth service must handle SSO operations at that throughput without becoming a bottleneck.\n\n---\n\n## Cited Notes\n\n- **01KS3QHSNGQ2VATM3TQEBCEGQM** (user_said, active): Enterprise contracts require SAML/OIDC SSO. No password-only paths for enterprise tenants.\n- **01KS3QHTF94Q2AX69ZVYB8TRVD** (decision, active): Browser sessions use HttpOnly+Secure+SameSite=Lax cookies; mobile uses bearer in Authorization header.\n- **01KS3QHTH329M4Z1HZZD1XDPT0** (decision, active): Refresh tokens are single-use; each refresh issues a new one and invalidates the prior.\n- **01KS3QHTDSMFVY1S2GXSY0YYJ5** (decision, active): Chose Argon2id (m=64MB, t=3, p=4) over bcrypt for new password hashes.\n- **01KS3QHVG17QHN919EM1ABZKHK** (user_said, active): Top-3 enterprise customers send ~10k events/sec at peak. Need to handle 2x that for headroom.\n\n---\n\n## Also Relevant\n\n- **01KS3QHTT0G798G7P2AFH136M8**: In-house billing system (no SaaS); tier/subscription info will be managed internally, not delegated.\n\n---\n\n## Caveats\n\nNone detected. The SSO requirement is unambiguous and has no conflicting or superseded notes. The supporting auth decisions align with it.",
+      "in_tokens": 53,
+      "out_tokens": 3783,
+      "seconds": 40.1,
+      "must_hits": [
+        "SSO",
+        "SAML"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "OIDC"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.167,
+      "score": 1.0
+    },
+    {
+      "id": "M2-idempotency-story",
+      "tier": "medium",
+      "question": "What's the team's overall idempotency story across services? Mention specific places it shows up.",
+      "intent": "explore",
+      "synthesis": "## Synthesis\n\nThe team has a **multi-layer idempotency story**, hardened by a production incident.\n\n**Top-level principle:** All calls to external services\u2014payment gateways, email senders, downstream webhooks\u2014MUST include an idempotency key tied to the business event [01KS3QHTYJAHHBT8EKNQ3YE98F]. This came directly from a Nov 2025 incident where ~30 customers were double-charged when a payment gateway timeout triggered a retry without an idempotency key; the fix was to use the invoice ID as the key [01KS3QHTWFD3TACNT01R0GQ6A8].\n\n**Ingest layer:** Events are deduplicated at the entry point on `(tenant_id, event_id)` within a 24-hour window [01KS3QHVQB7F7G9PED92BEC3J2]. This is deliberate: customer SDKs sometimes retry without proper idempotency, and the system absorbs those duplicates rather than pushing the problem upstream. All events flow through Kafka [01KS3QHVGV2K0Y2XM75W6SH5G2], which is partitioned by `tenant_id` to preserve per-tenant ordering [01KS3QHVX2KQVHF3NS4N0R24DY].\n\n**Payment/billing layer:** Invoices are generated under Postgres row-level locking for ACID correctness. Failed payments follow a tiered retry schedule\u2014retry at +1d (smart-retry), +3d (with email), +7d (suspend service) [01KS3QHV6ED58F713Q48Z8HEMY]\u2014where each attempt is guarded by the idempotency key, so re-execution of a payment step is safe.\n\nThe pattern across all three layers is the same: **assume retries will happen, make each layer safe to be called multiple times with the same input.**\n\n## Cited\n\n- `01KS3QHTYJAHHBT8EKNQ3YE98F` (principle): \"All calls to payment gateways, email senders, and webhooks downstream MUST send an idempotency key tied to the business event\"\n- `01KS3QHTWFD3TACNT01R0GQ6A8` (incident): \"Double-charged invoice during retry storm\" \u2014 Nov 2025, ~30 customers affected, root cause was missing idempotency key\n- `01KS3QHVQB7F7G9PED92BEC3J2` (decision): \"Dedupe events on (tenant_id, event_id) at ingest\" \u2014 24h window, absorbs customer SDK retries\n- `01KS3QHVGV2K0Y2XM75W6SH5G2` (decision): \"Kafka as the ingest backbone\" \u2014 3-broker, RF=3, 30-day retention\n- `01KS3QHVX2KQVHF3NS4N0R24DY` (decision): \"Partition Kafka topics by tenant_id\" \u2014 preserves per-tenant ordering\n- `01KS3QHV6ED58F713Q48Z8HEMY` (decision): \"Dunning ladder\" \u2014 +1d, +3d, +7d retry schedule for payment failures\n\n## Also relevant\n\n- `01KS3QHTTPEAM5ES73AKE850A7`: Postgres 16 with row-level locking for invoice generation (financial correctness)\n- `01KS3QHV4NBY9AGHKRQ2DJ9GC0`: Tax computation outsourced to TaxJar with fallback table\n\n## Caveats\n\nNone discovered. The idempotency story is coherent across layers: principle \u2192 incident \u2192 durable fix. No conflicts between the dedup-at-ingest and external-idempotency-key approaches; they're complementary (defense in depth).",
+      "in_tokens": 55,
+      "out_tokens": 3910,
+      "seconds": 37.3,
+      "must_hits": [
+        "idempotency",
+        "double-charge",
+        "dedup"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "payment",
+        "ingest",
+        "tenant"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.5,
+      "score": 1.0
+    },
+    {
+      "id": "M3-observability-cost",
+      "tier": "medium",
+      "question": "How does the team think about observability tooling cost?",
+      "intent": "decide",
+      "synthesis": "## Synthesis\n\nThe team has learned to **expect observability SaaS to become unaffordable at scale** and explicitly chose open-source, vendor-neutral tooling to avoid that trap. [01KS3QHW6CPDM4ZHX3VRG1ZN8G] notes that they'd previously locked into a managed APM\u2014their original 2024 choice hit ~$15k/month as they scaled [01KS3QHW70F71NWH6A2Y64HWNP]\u2014so they switched to OpenTelemetry + Grafana + Loki to own the stack in-house.\n\nThis decision sits atop a broader principle: **\"buy commodity, build differentiators.\"** [01KS3QHW8CWK82DP3VKJRFN636] Observability tooling landed on the \"commodity but controlled\" side, not the \"buy SaaS\" side. The team has seen the pattern repeat: every SaaS tool they adopted under $100/month eventually crossed $3k/month, and some hit $15k/month. [01KS3QHW7PJ555G076FGCEPQTX]\n\nThere's a precedent for cost-aware tool choices elsewhere: on ingest billing, they chose per-event pricing with bundled allowances [01KS3QHVEASEZ2FGT4VKJJR8ZS] rather than flat tiers, because flat-rate SaaS often prices unfairly for their customer base (too expensive for small users, too cheap for large ones).\n\n**The practical stance**: treat observability as infrastructure that should be built or self-hosted to avoid exponential cost growth, not rented from a vendor.\n\n---\n\n## Cited\n\n- **01KS3QHW6CPDM4ZHX3VRG1ZN8G** | decision | \"All services emit OTLP traces and metrics; Grafana dashboards and Loki for logs.\"\n- **01KS3QHW70F71NWH6A2Y64HWNP** | decision | \"Original 2024 choice. Hit ~$15k/mo at our scale; replaced by OTel + Grafana.\"\n- **01KS3QHW8CWK82DP3VKJRFN636** | principle | \"Anything that's commodity (auth-as-a-service for OAuth providers, email delivery, tax) can be bought. The product itself is built in-house.\"\n- **01KS3QHW7PJ555G076FGCEPQTX** | lesson | \"Every SaaS we adopted at <$100/mo passed $3k/mo within 18 months. Two passed $15k/mo.\"\n- **01KS3QHVEASEZ2FGT4VKJJR8ZS** | decision | \"Ingest priced per million events with bundled monthly allowance. Overage billed at end of month.\"\n\n---\n\n## Also relevant\n\n- **01KS3QHVG17QHN919EM1ABZKHK** (user_said): Peak load is ~10k events/sec, headroom needed for 2\u00d7. This scales the observability problem directly\u2014cost will track volume.\n\n---\n\n## Caveats\n\nNone. The evidence is consistent: the team learned from cost pain, articulated a principle, and applied it. The original SaaS APM hitting $15k/month is the inflection point that explains the entire approach.",
+      "in_tokens": 32,
+      "out_tokens": 3682,
+      "seconds": 34.6,
+      "must_hits": [
+        "OpenTelemetry"
+      ],
+      "must_missed": [
+        "Datadog"
+      ],
+      "bonus_hits": [
+        "vendor",
+        "Grafana",
+        "15k",
+        "SaaS"
+      ],
+      "must_score": 0.5,
+      "bonus_score": 0.5,
+      "score": 1.0
+    },
+    {
+      "id": "M4-pagination",
+      "tier": "medium",
+      "question": "What pagination approach does the read API use, and what was wrong with the old one?",
+      "intent": "decide",
+      "synthesis": "I'll search the memory graph for information about the read API's pagination approach and any historical issues.\nBased on the memory graph, here's what I found:\n\n## Synthesis\n\nThe read API currently uses **opaque cursor-based pagination** built on `(timestamp, event_id)` tuples [01KS3QHVHP1512RY96Z1PHMB3P]. This replaced an earlier **offset-based design** that used `limit+offset` parameters [01KS3QHVKEHWAER21MEC57CW7W].\n\n**The problem with offset pagination:** The old approach worked well initially, but hit a hard wall at scale. Once customers accumulated **~100k events**, offset pagination degraded significantly in performance. This is a classic database problem \u2014 offset requires the database to scan and discard N rows before returning results, so each request gets slower as the dataset grows. This triggered the migration to cursors.\n\n**Why cursors solve it:** Opaque cursors encode a stable anchor point (timestamp + event ID) that allows the database to seek directly to the next page without scanning prior rows, keeping latency constant regardless of total event volume.\n\n## Cited\n\n- **01KS3QHVHP1512RY96Z1PHMB3P** | decision | \"Read API uses opaque cursors based on (timestamp, event_id). No offset-based paging.\"\n- **01KS3QHVKEHWAER21MEC57CW7W** | decision (superseded) | \"Original 2024 design used limit+offset. Worked fine until customers crossed ~100k events.\"\n\n## Also relevant\n\n- Consider documenting the cursor format (timestamp + event_id) explicitly if not already in API docs \u2014 helps clients understand why they can't construct cursors themselves.\n\n## Caveats\n\nNone. The supersession is clean: old approach \u2192 incident \u2192 new approach. No conflicting views.",
+      "in_tokens": 37,
+      "out_tokens": 2028,
+      "seconds": 22.6,
+      "must_hits": [
+        "cursor",
+        "offset"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "timestamp",
+        "latency"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.333,
+      "score": 1.0
+    },
+    {
+      "id": "M5-flaky-tests",
+      "tier": "medium",
+      "question": "How should the team treat flaky tests?",
+      "intent": "decide",
+      "synthesis": "**No prior context found.** The memory graph contains 156 notes about your project, but none address flaky tests or testing practices. This is a fresh decision point.\n\n---\n\n## What the graph knows\n\nYour team has stated principles around:\n- **Monthly shipping cadence** [01KS3QHW18VFKYKM9AGQHF57JS]: \"visible progress every calendar month or the company dies\"\n- **Performance headroom** [01KS3QHVG17QHN919EM1ABZKHK]: handle 2\u00d7 your peak load (currently ~10k events/sec)\n\nThese constrain *how* you can treat flaky tests (you can't invest months stabilizing a test suite if that delays shipping), but they don't yet prescribe *what* to do.\n\n---\n\n## What to consider\n\nBefore deciding, clarify:\n\n1. **Scope**: Are you talking about unit tests, integration tests, end-to-end tests, or all of them?\n2. **Tolerance**: What's your SLA for test reliability? (e.g., \"99% pass rate on any run,\" \"only block merge if it fails 2/3 times,\" \"skip flaky tests in CI but flag them\")\n3. **Cost trade-off**: How much engineering time is it worth to fix a flaky test vs. quarantine it vs. delete it?\n4. **Signal vs. noise**: Which flaky tests are hiding real bugs vs. just noise (timing, environment, infrastructure)?\n\nCommon approaches the industry clusters around:\n- **Quarantine + fix**: mark flaky tests as skipped/xfail while you investigate; it's a debt item\n- **Retry loop**: re-run failed tests N times before failing the build (masks root causes)\n- **Delete if not critical**: if a test doesn't guard a user-facing invariant, remove it\n- **Isolate environment**: many flaky tests point to test isolation or environment setup issues\n\n---\n\nOnce you've decided, I can record it as a principle or decision so the team's approach is visible next time this comes up.\n\n**Caveats**: Your monthly shipping cadence suggests you can't let test stabilization slow you down, but you also can't let flakiness hide production bugs. There's a tension worth naming explicitly.",
+      "in_tokens": 30,
+      "out_tokens": 1709,
+      "seconds": 20.6,
+      "must_hits": [],
+      "must_missed": [
+        "concurrency",
+        "race"
+      ],
+      "bonus_hits": [],
+      "must_score": 0.0,
+      "bonus_score": 0.0,
+      "score": 0.0
+    },
+    {
+      "id": "H1-dunning-history",
+      "tier": "hard",
+      "question": "We're considering changing our dunning approach again. What's the history \u2014 what did we use before, what do we use now, and what was wrong with the old approach?",
+      "intent": "verify",
+      "synthesis": "## Summary\n\nI found the dunning history in memory. Here's the timeline:\n\n**Old approach (2024, retired):** [01KS3QHVAXFFSKFJJZVGHNM0VS] The original strategy was to retry payment 5 times within 24 hours. This proved too aggressive \u2014 it hammered customers with rapid-fire retry attempts and generated complaints about payment naggin.\n\n**Current approach (active):** [01KS3QHV6ED58F713Q48Z8HEMY] You replaced that with a 3-step dunning ladder that spaces attempts out over a week:\n- Day 1: smart-retry (no customer contact)\n- Day 3: retry with email notification\n- Day 7: suspend service\n\nThe move to the 3-step ladder was explicitly designed to be less aggressive than \"5 retries in 24h\" while still recovering failed payments.\n\n---\n\n## Response\n\n**synthesis:**\n\nYour dunning strategy has evolved once already. The 2024 approach\u2014attempting payment 5 times within 24 hours\u2014was abandoned because it generated customer complaints; the aggressive retry cadence felt like hammering. You replaced it with the current 3-step ladder, which frontloads a quiet smart-retry on day 1, adds a human touch (email) on day 3, and escalates to service suspension only on day 7. This is substantially less abrasive while still giving legitimate payment issues time to resolve.\n\nIf you're considering a change again, the tension is likely between recovery and customer friction: the current ladder is gentle on customers but may leave money on the table (customers who would pay if pushed harder), or conversely, you may have data that the spacing doesn't actually improve recover rates compared to something tighter. What's the new thinking?\n\n**cited:**\n\n- `01KS3QHVAXFFSKFJJZVGHNM0VS`: \"Decision (superseded): retry payment 5x in 24h\" \u2014 old brute-force approach, too aggressive\n- `01KS3QHV6ED58F713Q48Z8HEMY`: \"Decision: 3-step dunning ladder on failed payment\" \u2014 current active strategy\n\n**also_relevant:**\n\n- Your in-house billing engine requirement [01KS3QHTT0G798G7P2AFH136M8] means dunning strategy choices stay internal \u2014 useful context if you're evaluating third-party options\n\n**caveats:**\n\nNone found. The history is clear and the transition is documented. No conflicting `user_said` notes about dunning preferences, so the floor is open for reconsidering the current ladder.",
+      "in_tokens": 44,
+      "out_tokens": 2901,
+      "seconds": 31.8,
+      "must_hits": [
+        "5x",
+        "3-step",
+        "ladder"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "complaints",
+        "hammered"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.2,
+      "score": 1.0
+    },
+    {
+      "id": "H2-bcrypt-status",
+      "tier": "hard",
+      "question": "Is bcrypt still acceptable for password hashing in our system?",
+      "intent": "verify",
+      "synthesis": "## Synthesis\n\n**No \u2014 bcrypt has been superseded for new password hashes in your system.** [01KS3QHTDSMFVY1S2GXSY0YYJ5]\n\nYour current decision (active, high confidence) is to use **Argon2id** (m=64MB, t=3, p=4) for all new password hashes. The reasoning is memory-hardness against GPU attacks \u2014 a threat that has advanced since bcrypt was your initial choice [01KS3QHTPP6KV4ZS0PZ46YTAQ1].\n\nHowever, **bcrypt remains acceptable for legacy hashes.** Your strategy is lazy migration: existing bcrypt hashes stay in place until next login, at which point they are re-hashed with Argon2id. This pragmatic approach avoids the operational burden of bulk re-hashing while closing the vulnerability gap over time. [01KS3QHTDSMFVY1S2GXSY0YYJ5]\n\n---\n\n## Cited\n\n| id | kind | summary |\n|---|---|---|\n| `01KS3QHTDSMFVY1S2GXSY0YYJ5` | decision | Chose Argon2id (m=64MB, t=3, p=4) over bcrypt for new password hashes. |\n| `01KS3QHTPP6KV4ZS0PZ46YTAQ1` | decision (superseded) | Initial decision in 2024 to use bcrypt cost=12. |\n\n---\n\n## Also Relevant\n\n- [01KS3QHSNGQ2VATM3TQEBCEGQM] \u2014 Enterprise contracts require SAML/OIDC SSO, so password-only paths won't exist for all users (broader auth context)\n\n---\n\n## Caveats\n\nNone. The decision is recent, active, and explicit about both the new standard (Argon2id) and the backward-compatibility path (lazy-migrate bcrypt). If you're adding new password hashing code, use Argon2id; if you're touching existing login flows, respect the lazy-migration strategy.",
+      "in_tokens": 46,
+      "out_tokens": 3358,
+      "seconds": 34.1,
+      "must_hits": [
+        "Argon2",
+        "legacy",
+        "migrate"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "lazy",
+        "next login",
+        "memory-hardness"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.5,
+      "score": 1.0
+    },
+    {
+      "id": "H3-idempotency-principle",
+      "tier": "hard",
+      "question": "What's the principle that connects the billing double-charge incident with the ingest deduplication logic? Cite it explicitly.",
+      "intent": "verify",
+      "synthesis": "**synthesis:**\n\nThe principle that connects the billing double-charge incident to ingest deduplication is **idempotency**: the requirement that repeated calls with the same business context produce the same result, preventing accidental duplication.\n\nOn 2025-11-02, ~30 customers were double-charged when the payment gateway timed out and the system retried without an idempotency key [01KS3QHTWFD3TACNT01R0GQ6A8]. This incident directly prompted the generalized principle: \"All calls to payment gateways, email senders, and webhooks downstream MUST send an idempotency key tied to the business event\" [01KS3QHTYJAHHBT8EKNQ3YE98F].\n\nThat same principle abstracts the ingest deduplication decision: drop duplicate events within 24h by (tenant_id, event_id) because customer SDKs retry without proper idempotency, and the system absorbs those duplicates rather than pushing the problem upstream [01KS3QHVQB7F7G9PED92BEC3J2]. Both the payment gateway incident and the ingest dedup logic are concrete instantiations of the same architectural requirement: **external mutations and event processing must be idempotent**.\n\n**cited:**\n\n- `01KS3QHTYJAHHBT8EKNQ3YE98F` (principle): \"All calls to payment gateways, email senders, and webhooks downstream MUST send an idempotency key tied to the business event\"\n- `01KS3QHTWFD3TACNT01R0GQ6A8` (incident): Double-charged ~30 customers on 2025-11-02 due to missing idempotency key during payment retry\n- `01KS3QHVQB7F7G9PED92BEC3J2` (decision): Deduplicate events at ingest on (tenant_id, event_id) within 24h window\n\n**also_relevant:**\n\n- You may want to audit other external call sites (email, webhooks) to verify they all send idempotency keys per the principle.\n\n**caveats:**\n\nNone. The principle explicitly states it was \"generalized from the double-charge incident\" and directly governs the ingest dedup decision.",
+      "in_tokens": 46,
+      "out_tokens": 3215,
+      "seconds": 28.7,
+      "must_hits": [
+        "idempotency",
+        "external mutation"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "business event",
+        "webhook",
+        "email"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.5,
+      "score": 1.0
+    },
+    {
+      "id": "H4-backpressure-chain",
+      "tier": "hard",
+      "question": "Walk me through the backpressure story for the ingest service: what happened, what lesson came out of it, and what principle did we generalize? Show the chain.",
+      "intent": "verify",
+      "synthesis": "Perfect. Here's the backpressure story chain:\n\n## The Story\n\n**What happened:** In early 2025, our ingest pipeline fell behind on events. Instead of signaling capacity constraints back to the producer, we silently returned 5xx errors\u2014which clients (understandably) treated as transient failures and dropped. We lost a customer contract over it [01KS3QHVRPA3CXFCP7KWXS58VR].\n\nA related pattern emerged: a whale customer saturated partition 7 at 100% CPU for 6 hours, starving smaller tenants on the same partition with elevated latency [01KS3QHVXSR1Z58DJ1EBPFRPRC].\n\n**What we learned:** Silent degradation is worse than explicit rejection. We now signal back with a 429 status + `Retry-After` header, so the SDK can buffer and retry intelligently instead of guessing. The producer becomes a partner in managing pressure, not a victim of surprises [01KS3QHVRPA3CXFCP7KWXS58VR].\n\n**The generalized principle:** Backpressure is a *contract*, not an error. Systems with finite capacity must communicate their limits to upstream callers\u2014not silently drop, not 5xx, but explicitly signal \"I'm at capacity, back off.\" The principle applies across ingest, billing webhooks, and email sends: anywhere you have a queue and a promise to deliver [01KS3QHVV849YVG7X812ZY1NE5].\n\nThe noisy-neighbor incident feeds back into this: per-tenant quotas at the producer, enforced at ingest time, prevent one customer from drowning out others [01KS3QHVXSR1Z58DJ1EBPFRPRC].\n\n## Cited notes\n\n| id | kind | summary |\n|---|---|---|\n| 01KS3QHVRPA3CXFCP7KWXS58VR | lesson | Silently dropping events under pressure cost us a customer. Now the SDK gets a 429 with Retry-After and buffers. |\n| 01KS3QHVV849YVG7X812ZY1NE5 | principle | Systems with finite capacity must communicate capacity to upstream callers, not silently drop or 5xx. |\n| 01KS3QHVXSR1Z58DJ1EBPFRPRC | incident | A whale customer kept partition 7 saturated for 6 hours; smaller tenants on that partition saw elevated latency. |",
+      "in_tokens": 39,
+      "out_tokens": 3307,
+      "seconds": 31.9,
+      "must_hits": [
+        "backpressure",
+        "429",
+        "contract"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "SDK",
+        "Retry-After",
+        "silent"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.375,
+      "score": 1.0
+    },
+    {
+      "id": "H5-no-saas-downstream",
+      "tier": "hard",
+      "question": "The founder has a 'no SaaS for billing' rule. What decisions and exceptions flow from that, and what higher-level principle does it sit under?",
+      "intent": "decide",
+      "synthesis": "## Synthesis\n\nThe founder's constraint sits under a broader principle: **\"buy small, build big\"** [01KS3QHW8CWK82DP3VKJRFN636]. Commodity functions (OAuth, email, tax computation) are outsourced; the product itself stays in-house. Billing is core to the product, not a utility.\n\nThe \"no SaaS for billing\" rule [01KS3QHTT0G798G7P2AFH136M8] explicitly bans platforms like Stripe Billing or Recurly, but *allows* using a payment processor (Stripe/Adyen)\u2014the distinction is crucial: payment *processing* (tokenization, authorization) is commodity; invoicing and subscription management are yours.\n\n**Decisions flowing from this:**\n\n- **Financial correctness:** Postgres 16 with row-level locking for invoice generation [01KS3QHTTPEAM5ES73AKE850A7] \u2014 ACID guarantees are non-negotiable for money.\n- **Pricing model:** Ingest priced per million events with bundled allowance, overage billed end-of-month [01KS3QHVEASEZ2FGT4VKJJR8ZS].\n- **Billing transitions:** Upgrades charge the prorated delta immediately; downgrades credit on next cycle, no ad-hoc manual adjustments [01KS3QHV2KKHJV40B8TD3VS57Q].\n- **Collection:** Dunning ladder \u2014 retry at +1d (smart-retry), +3d (with email), +7d (suspend) [01KS3QHV6ED58F713Q48Z8HEMY].\n\n**Exception:** Tax computation is delegated to TaxJar, with a local US-only fallback table for resilience [01KS3QHV4NBY9AGHKRQ2DJ9GC0] \u2014 tax is commodity, and maintaining it in-house would distract from product.\n\n**Why this rule exists:** A historical lesson: every SaaS adopted at <$100/month passed $3k/month within 18 months; two passed $15k [01KS3QHW7PJ555G076FGCEPQTX]. Billing SaaS would eventually own your unit economics.\n\n---\n\n## Cited\n\n| id | kind | summary |\n|---|---|---|\n| 01KS3QHTT0G798G7P2AFH136M8 | user_said | Cannot use Stripe Billing / Recurly / etc. \u2014 must own the billing engine in-house. |\n| 01KS3QHW8CWK82DP3VKJRFN636 | principle | Anything that's commodity (auth-as-a-service for OAuth providers, email delivery, tax) can be bought. The product itself is built in-house. |\n| 01KS3QHTTPEAM5ES73AKE850A7 | decision | Postgres 16 with row-level locking for invoice generation. ACID needed for financial correctness. |\n| 01KS3QHVEASEZ2FGT4VKJJR8ZS | decision | Ingest priced per million events with bundled monthly allowance. Overage billed at end of month. |\n| 01KS3QHV2KKHJV40B8TD3VS57Q | decision | Upgrades charge the prorated delta immediately; downgrades credit on next cycle. No ad-hoc adjustments. |\n| 01KS3QHV6ED58F713Q48Z8HEMY | decision | On payment failure: retry at +1d (smart-retry), +3d (with email), +7d (suspend service). |\n| 01KS3QHV4NBY9AGHKRQ2DJ9GC0 | decision | Tax computation is delegated to TaxJar. Local fallback table for US-only customers in case the integration is down. |\n| 01KS3QHW7PJ555G076FGCEPQTX | lesson | Every SaaS we adopted at <$100/mo passed $3k/mo within 18 months. Two passed $15k/mo. |\n\n## Also relevant\n\n- **Idempotency keys** [01KS3QHTYJAHHBT8EKNQ3YE98F]: All payment gateway calls must include idempotency keys tied to business events\u2014critical for retry safety in dunning and payment processing.\n- **Monorepo** [01KS3QHW486ECAF807E5R7J2XK]: Auth, billing, ingest, and web frontend share one repo\u2014billing code is not isolated in a separate service (yet).\n\n## Caveats\n\nNone identified. The constraint is well-established with clear architectural consequences and an explicit exception (tax). The principle is consistently applied across other vendor decisions.",
+      "in_tokens": 32,
+      "out_tokens": 2970,
+      "seconds": 30.1,
+      "must_hits": [
+        "buy",
+        "build",
+        "tax"
+      ],
+      "must_missed": [],
+      "bonus_hits": [
+        "commodity",
+        "TaxJar",
+        "Postgres"
+      ],
+      "must_score": 1.0,
+      "bonus_score": 0.375,
+      "score": 1.0
+    }
+  ],
+  "totals": {
+    "in_tokens": 565,
+    "out_tokens": 41770,
+    "seconds": 427.2,
+    "estimated_cost_usd": 0.2094
+  }
+}

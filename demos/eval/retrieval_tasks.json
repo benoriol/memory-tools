@@ -1,0 +1,127 @@
+{
+  "_README": [
+    "Retrieval benchmark tasks against the synthetic Mango graph.",
+    "Each task has:",
+    "  - id: stable identifier",
+    "  - tier: easy | medium | hard",
+    "  - question: the natural-language query to pass to memory_retrieve",
+    "  - intent: decide | explore | verify",
+    "  - must_mention: list of substrings (case-insensitive) the synthesis must contain.",
+    "  - bonus_mention: optional extra substrings; each counts half-weight.",
+    "Scoring is fraction of must_mention items hit. 1.0 = full credit."
+  ],
+
+  "easy": [
+    {
+      "id": "E1-billing-db",
+      "question": "What database did the billing team choose, and why?",
+      "intent": "decide",
+      "must_mention": ["Postgres", "ACID"],
+      "bonus_mention": ["row-level lock", "financial"]
+    },
+    {
+      "id": "E2-money-storage",
+      "question": "How are monetary amounts stored in the billing schema?",
+      "intent": "decide",
+      "must_mention": ["BIGINT", "minor units"],
+      "bonus_mention": ["cents", "integer"]
+    },
+    {
+      "id": "E3-trial-abuse",
+      "question": "How do we prevent free-trial abuse?",
+      "intent": "decide",
+      "must_mention": ["disposable email", "rate"],
+      "bonus_mention": ["BIN", "412"]
+    },
+    {
+      "id": "E4-postmortems",
+      "question": "What's the policy on incident postmortems?",
+      "intent": "decide",
+      "must_mention": ["blameless", "5"],
+      "bonus_mention": ["Sev-2", "business days"]
+    },
+    {
+      "id": "E5-versioning",
+      "question": "How do we version our public API?",
+      "intent": "decide",
+      "must_mention": ["URL", "/v1"],
+      "bonus_mention": ["major", "12-month"]
+    }
+  ],
+
+  "medium": [
+    {
+      "id": "M1-sso-mfa",
+      "question": "What auth constraints apply specifically to our enterprise customers?",
+      "intent": "decide",
+      "must_mention": ["SSO", "SAML"],
+      "bonus_mention": ["MFA", "device", "OIDC"]
+    },
+    {
+      "id": "M2-idempotency-story",
+      "question": "What's the team's overall idempotency story across services? Mention specific places it shows up.",
+      "intent": "explore",
+      "must_mention": ["idempotency", "double-charge", "dedup"],
+      "bonus_mention": ["payment", "ingest", "tenant"]
+    },
+    {
+      "id": "M3-observability-cost",
+      "question": "How does the team think about observability tooling cost?",
+      "intent": "decide",
+      "must_mention": ["Datadog", "OpenTelemetry"],
+      "bonus_mention": ["vendor", "Grafana", "15k", "SaaS"]
+    },
+    {
+      "id": "M4-pagination",
+      "question": "What pagination approach does the read API use, and what was wrong with the old one?",
+      "intent": "decide",
+      "must_mention": ["cursor", "offset"],
+      "bonus_mention": ["timestamp", "500", "latency"]
+    },
+    {
+      "id": "M5-flaky-tests",
+      "question": "How should the team treat flaky tests?",
+      "intent": "decide",
+      "must_mention": ["concurrency", "race"],
+      "bonus_mention": ["silenced", "investigation", "quarter"]
+    }
+  ],
+
+  "hard": [
+    {
+      "id": "H1-dunning-history",
+      "question": "We're considering changing our dunning approach again. What's the history — what did we use before, what do we use now, and what was wrong with the old approach?",
+      "intent": "verify",
+      "must_mention": ["5x", "3-step", "ladder"],
+      "bonus_mention": ["complaints", "+1d", "+3d", "+7d", "hammered"]
+    },
+    {
+      "id": "H2-bcrypt-status",
+      "question": "Is bcrypt still acceptable for password hashing in our system?",
+      "intent": "verify",
+      "must_mention": ["Argon2", "legacy", "migrate"],
+      "bonus_mention": ["lazy", "next login", "memory-hardness"]
+    },
+    {
+      "id": "H3-idempotency-principle",
+      "question": "What's the principle that connects the billing double-charge incident with the ingest deduplication logic? Cite it explicitly.",
+      "intent": "verify",
+      "must_mention": ["idempotency", "external mutation"],
+      "bonus_mention": ["business event", "webhook", "email"]
+    },
+    {
+      "id": "H4-backpressure-chain",
+      "question": "Walk me through the backpressure story for the ingest service: what happened, what lesson came out of it, and what principle did we generalize? Show the chain.",
+      "intent": "verify",
+      "must_mention": ["backpressure", "429", "contract"],
+      "bonus_mention": ["SDK", "Retry-After", "silent", "contract not error"]
+    },
+    {
+      "id": "H5-no-saas-downstream",
+      "question": "The founder has a 'no SaaS for billing' rule. What decisions and exceptions flow from that, and what higher-level principle does it sit under?",
+      "intent": "decide",
+      "must_mention": ["buy", "build", "tax"],
+      "bonus_mention": ["commodity", "differentiator", "TaxJar", "Postgres"]
+    }
+  ]
+}
