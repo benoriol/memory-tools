@@ -13,7 +13,19 @@ notes and connect them into the graph.
 2. **Decompose.** Slice the dump into discrete pieces of knowledge.
    Don't pad — only write what's worth recalling later.
 
-3. **For each piece, pick a `kind` label.** Use whatever describes it
+3. **Always provide `short_label` (≤5 words) on every note.** This is
+   what gets rendered on the graph and list views in the viz, so it
+   needs to be visually scannable. Examples:
+     - title: "Polynomial degree sweep across noise=0.05/0.20/0.50"
+       short_label: "polyfit degree sweep"
+     - title: "Validation set is extrapolation only (X ∈ [0.86, 1.0])"
+       short_label: "extrapolation-only val split"
+     - title: "Higher-degree polynomials suffer Runge phenomenon"
+       short_label: "Runge phenomenon"
+   Keep it terse, content-bearing, no articles ("the", "a") unless
+   essential. `title` stays as the full descriptive headline.
+
+4. **For each piece, pick a `kind` label.** Use whatever describes it
    best. Common choices:
 
    - `observation` — something we noticed
@@ -27,7 +39,7 @@ notes and connect them into the graph.
 
    New labels are fine if none of the above fit.
 
-4. **Connect with abstraction edges where appropriate.** When two
+5. **Connect with abstraction edges where appropriate.** When two
    notes in the batch are at different abstraction levels (raw
    observation vs. distilled lesson; concrete experiment vs.
    generalized principle), draw an `abstracts` edge from the **more
@@ -35,8 +47,11 @@ notes and connect them into the graph.
 
    ```
    capture_batch([
-     {note_id: "@1", kind: "experiment", title: "Tried X at lr=0.01", ...},
-     {note_id: "@2", kind: "principle", title: "Default lr=0.01 for this family",
+     {note_id: "@1", kind: "experiment", title: "Tried X at lr=0.01",
+      short_label: "lr=0.01 try", ...},
+     {note_id: "@2", kind: "principle",
+      title: "Default lr=0.01 for this family",
+      short_label: "lr=0.01 default",
       edges: [{to: "@1", type: "abstracts"}]},   # principle @2 abstracts @1
    ])
    ```
@@ -44,12 +59,12 @@ notes and connect them into the graph.
    Use `related` for lateral connections (same domain, no abstraction
    claim). Skip edges entirely if there's nothing meaningful to say.
 
-5. **Handle conflicts.** If a new note contradicts an existing one in
+6. **Handle conflicts.** If a new note contradicts an existing one in
    the graph, call `supersede(old_id, new_id, reason)`. Don't silently
    overwrite — the old note stays for history but goes
    `status: superseded`.
 
-6. **Detect "user said" inputs specifically.** If part of the dump
+7. **Detect "user said" inputs specifically.** If part of the dump
    describes something the user told the agent (a goal, a preference,
    a hard constraint, a vision, a plan), capture it as
    `kind: user_said`. These notes earn priority attention at retrieval

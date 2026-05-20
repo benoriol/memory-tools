@@ -12,6 +12,7 @@ def _make_note(**overrides) -> Note:
     defaults = dict(
         id=new_id(),
         title="Migration 0042 blocked prod",
+        short_label="0042 lock incident",
         summary="NOT NULL adds on >10M-row tables lock writes.",
         body="Full body of the note.\n\nSecond paragraph.",
         kind="lesson",
@@ -36,6 +37,7 @@ def test_write_then_read_roundtrip(store: Path):
     # The body and frontmatter survive intact.
     assert loaded.id == original.id
     assert loaded.title == original.title
+    assert loaded.short_label == original.short_label
     assert loaded.summary == original.summary
     assert loaded.body == original.body
     assert loaded.kind == original.kind
@@ -68,6 +70,9 @@ def test_note_without_optional_fields(store: Path):
     assert loaded.anchors == []
     assert loaded.happened_at is None
     assert loaded.last_verified_at is None
+    # Notes without a short_label round-trip as None (and the viz falls
+    # back to the title).
+    assert loaded.short_label is None
 
 
 def test_eventive_timestamps_preserved(store: Path):

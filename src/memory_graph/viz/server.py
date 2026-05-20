@@ -40,13 +40,14 @@ def _graph_json(conn: sqlite3.Connection) -> dict[str, Any]:
     """Build the JSON payload for the viewer."""
     nodes: list[dict[str, Any]] = []
     for r in conn.execute(
-        "SELECT id, title, summary, kind, status, created_at, updated_at,"
-        " happened_at, last_verified_at, confidence FROM nodes"
+        "SELECT id, title, short_label, summary, kind, status, created_at,"
+        " updated_at, happened_at, last_verified_at, confidence FROM nodes"
     ):
         nodes.append(
             {
                 "id": r["id"],
                 "title": r["title"],
+                "short_label": r["short_label"],
                 "summary": r["summary"],
                 "kind": r["kind"],
                 "status": r["status"],
@@ -87,9 +88,9 @@ def _graph_json(conn: sqlite3.Connection) -> dict[str, Any]:
 
 def _note_json(conn: sqlite3.Connection, store_root: Path, note_id: str) -> dict[str, Any] | None:
     row = conn.execute(
-        "SELECT id, title, summary, body, kind, status, created_at, updated_at,"
-        " happened_at, last_verified_at, confidence, cluster_id, source_path"
-        " FROM nodes WHERE id = ?",
+        "SELECT id, title, short_label, summary, body, kind, status, created_at,"
+        " updated_at, happened_at, last_verified_at, confidence, cluster_id,"
+        " source_path FROM nodes WHERE id = ?",
         (note_id,),
     ).fetchone()
     if row is None:
@@ -131,6 +132,7 @@ def _note_json(conn: sqlite3.Connection, store_root: Path, note_id: str) -> dict
     return {
         "id": row["id"],
         "title": row["title"],
+        "short_label": row["short_label"],
         "summary": row["summary"],
         "body_markdown": body,
         "kind": row["kind"],
@@ -236,6 +238,14 @@ def serve(
             f"no index.db inside {root}. Did you run `memory-graph init` "
             "in the project? Or pass --path pointing at the .memory-graph/ dir."
         )
+
+    # Apply any additive schema changes (e.g., new nullable columns) before
+    # the read-only request handlers start querying. The viz opens the DB
+    # `mode=ro` for every request, which can't ALTER; this one-shot
+    # write-mode open through the canonical opener ensures the schema is
+    # current first.
+    from memory_graph.storage.db import open_db as _open_db_rw
+    _open_db_rw(root / "index.db").close()
 
     handler = _make_handler(root)
     httpd = ThreadingHTTPServer((host, port), handler)

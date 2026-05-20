@@ -155,10 +155,12 @@ def build_sdk_tools(store: Store) -> list[Any]:
 
     @tool(
         "capture",
-        "Write a single note. Returns id + duplicate flags.",
+        "Write a single note. Returns id + duplicate flags. "
+        "`short_label` is a <=5-word label used by the graph viz; "
+        "always provide one.",
         {
-            "title": str, "summary": str, "body": str, "kind": str,
-            "status": str, "tags": list, "edges": list,
+            "title": str, "short_label": str, "summary": str, "body": str,
+            "kind": str, "status": str, "tags": list, "edges": list,
             "happened_at": int, "last_verified_at": int, "confidence": float,
         },
     )
@@ -172,6 +174,7 @@ def build_sdk_tools(store: Store) -> list[Any]:
                 title=args["title"], summary=args["summary"], body=args["body"],
                 kind=args["kind"],
                 status=args.get("status", "active"),
+                short_label=args.get("short_label"),
                 tags=args.get("tags") or [],
                 edges=edges,
                 happened_at=args.get("happened_at"),
@@ -329,6 +332,7 @@ def _note_dict(note) -> dict[str, Any]:
     return {
         "id": note.id,
         "title": note.title,
+        "short_label": note.short_label,
         "summary": note.summary,
         "body": note.body,
         "kind": note.kind,

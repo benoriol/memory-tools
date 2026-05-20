@@ -64,6 +64,8 @@ def _render(note: Note) -> str:
         "updated_at": note.updated_at,
         "confidence": note.confidence,
     }
+    if note.short_label:
+        fm["short_label"] = note.short_label
     if note.happened_at is not None:
         fm["happened_at"] = note.happened_at
     if note.last_verified_at is not None:
@@ -123,6 +125,7 @@ def _from_frontmatter(data: dict, body: str, source_path: str) -> Note:
         body=body,
         kind=data["kind"],
         status=data.get("status", "active"),
+        short_label=data.get("short_label"),
         created_at=int(data.get("created_at", 0)),
         updated_at=int(data.get("updated_at", 0)),
         happened_at=_optional_int(data.get("happened_at")),

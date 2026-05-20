@@ -67,6 +67,7 @@ class Store:
         body: str,
         kind: str,
         status: str = "active",
+        short_label: str | None = None,
         tags: Iterable[str] = (),
         edges: Iterable[Edge] = (),
         anchors: Iterable[Anchor] = (),
@@ -87,6 +88,7 @@ class Store:
         note = Note(
             id=nid,
             title=title,
+            short_label=short_label,
             summary=summary,
             body=body,
             kind=kind,
@@ -189,6 +191,7 @@ class Store:
         return Note(
             id=row["id"],
             title=row["title"],
+            short_label=row["short_label"],
             summary=row["summary"],
             body=row["body"],
             kind=row["kind"],
@@ -231,7 +234,8 @@ class Store:
             nid = ids[idx]
             score = float(scores[idx])
             meta = self.conn.execute(
-                "SELECT summary, kind, status FROM nodes WHERE id = ?", (nid,)
+                "SELECT summary, kind, status, short_label FROM nodes WHERE id = ?",
+                (nid,),
             ).fetchone()
             if meta is None:
                 continue
@@ -240,6 +244,7 @@ class Store:
                 "summary": meta["summary"],
                 "kind": meta["kind"],
                 "status": meta["status"],
+                "short_label": meta["short_label"],
                 "score": score,
             })
         return results
@@ -376,12 +381,14 @@ class Store:
         with self.conn:
             self.conn.execute(
                 """INSERT INTO nodes (
-                    id, title, summary, body, kind, status, created_at, updated_at,
-                    happened_at, last_verified_at, confidence, cluster_id, body_hash
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    id, title, short_label, summary, body, kind, status,
+                    created_at, updated_at, happened_at, last_verified_at,
+                    confidence, cluster_id, body_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    note.id, note.title, note.summary, note.body, note.kind,
-                    note.status, note.created_at, note.updated_at,
+                    note.id, note.title, note.short_label, note.summary,
+                    note.body, note.kind, note.status,
+                    note.created_at, note.updated_at,
                     note.happened_at, note.last_verified_at, note.confidence,
                     note.cluster_id, note.body_hash,
                 ),

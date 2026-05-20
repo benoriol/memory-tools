@@ -22,8 +22,24 @@ def open_db(path: str | Path) -> sqlite3.Connection:
     conn = sqlite3.connect(p, isolation_level=None)  # autocommit
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA_SQL)
+    _ensure_columns(conn)
     _ensure_version(conn)
     return conn
+
+
+def _ensure_columns(conn: sqlite3.Connection) -> None:
+    """Idempotent column-level additions. CREATE TABLE IF NOT EXISTS
+    won't add new columns to a pre-existing table, so for additive,
+    backward-compatible schema changes we just ALTER TABLE here.
+
+    Per-column dev-time additions (no version bump, NULLable defaults
+    so old rows survive untouched).
+    """
+    existing = {
+        r["name"] for r in conn.execute("PRAGMA table_info(nodes)")
+    }
+    if "short_label" not in existing:
+        conn.execute("ALTER TABLE nodes ADD COLUMN short_label TEXT")
 
 
 def _ensure_version(conn: sqlite3.Connection) -> None:

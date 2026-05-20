@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS meta (
 CREATE TABLE IF NOT EXISTS nodes (
     id                TEXT PRIMARY KEY,
     title             TEXT NOT NULL,
+    -- `short_label` is a ≤5-word label the agent picks for compact UI
+    -- rendering (graph viz, list rows). Falls back to title when NULL.
+    short_label       TEXT,
     summary           TEXT NOT NULL,
     body              TEXT NOT NULL,
     -- `kind` is a free-text label for the reader's orientation

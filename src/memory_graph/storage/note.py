@@ -62,6 +62,9 @@ class Note:
     body: str
     kind: str
     status: str = "active"
+    # A ≤5-word label the agent picks for compact UI rendering
+    # (graph nodes, list rows). Falls back to `title` when None.
+    short_label: str | None = None
     created_at: int = 0           # ms since epoch
     updated_at: int = 0
     happened_at: int | None = None

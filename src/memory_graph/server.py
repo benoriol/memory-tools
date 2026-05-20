@@ -72,6 +72,7 @@ def memory_capture(
     summary: str,
     body: str,
     kind: str,
+    short_label: str | None = None,
     status: str = "active",
     tags: list[str] | None = None,
     edges: list[dict[str, Any]] | None = None,
@@ -82,6 +83,8 @@ def memory_capture(
     """Write a single memory note to the store.
 
     `edges` is a list of {"to": id, "type": "...", "weight": 1.0}.
+    `short_label` is a <=5-word label shown on graph nodes and list rows
+    (falls back to `title` when not provided — but please provide one).
     Returns {"id": new_id, "duplicates": [...]}, where `duplicates` lists
     existing notes with cosine >= 0.92 to the new content.
     """
@@ -91,6 +94,7 @@ def memory_capture(
     ]
     return get_store().capture(
         title=title,
+        short_label=short_label,
         summary=summary,
         body=body,
         kind=kind,

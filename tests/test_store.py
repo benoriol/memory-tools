@@ -31,6 +31,21 @@ def _make_kwargs(**over):
 # -- capture / get ----------------------------------------------------------
 
 
+def test_capture_with_short_label_round_trips(s: Store):
+    """A short_label written by capture must show up in get() and search()."""
+    res = s.capture(
+        title="Polynomial degree sweep across noise=0.05/0.20/0.50",
+        short_label="polyfit degree sweep",
+        summary="degree-3 wins at every noise level",
+        body="body",
+        kind="experiment",
+    )
+    note = s.get(res["id"])
+    assert note.short_label == "polyfit degree sweep"
+    hits = s.search("polyfit degree sweep")
+    assert hits and hits[0]["short_label"] == "polyfit degree sweep"
+
+
 def test_capture_creates_node_markdown_and_embedding(s: Store, store: Path):
     result = s.capture(**_make_kwargs())
     nid = result["id"]

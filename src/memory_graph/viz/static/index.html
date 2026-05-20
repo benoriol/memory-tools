@@ -100,6 +100,18 @@
   .row .status-tag { font-size: 10px; padding: 1px 5px;
                      border-radius: 3px; background: var(--panel-2);
                      color: var(--muted); margin-left: 4px; }
+
+  /* Edge legend in the sidebar */
+  .legend { padding: 0 16px 14px; font-size: 12px; line-height: 1.6;
+            color: var(--text); }
+  .legend .row { display: flex; align-items: center; gap: 10px;
+                 padding: 2px 0; }
+  .legend .line { width: 28px; height: 0;
+                  border-top: 2px solid currentColor; flex: 0 0 auto; }
+  .legend .line.faded { opacity: 0.35; }
+  .legend .line.dashed { border-top-style: dashed; }
+  .legend .note { color: var(--muted); font-size: 11px;
+                  margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -115,6 +127,24 @@
 
     <h2>filter by status</h2>
     <div class="filters" id="status-filters"></div>
+
+    <h2>edges</h2>
+    <div class="legend">
+      <div class="row" style="color:#6aa1ff">
+        <span class="line"></span>
+        <span><strong>abstracts</strong> — points from more abstract to more concrete</span>
+      </div>
+      <div class="row" style="color:#f5a25d">
+        <span class="line dashed"></span>
+        <span><strong>supersedes</strong> — replaces an older note (status → superseded)</span>
+      </div>
+      <div class="row" style="color:#5b6172">
+        <span class="line faded"></span>
+        <span><strong>related</strong> — lateral / associative</span>
+      </div>
+      <div class="note">Edge labels are omitted from the graph for clarity;
+        colors above identify each type.</div>
+    </div>
 
     <h2>search</h2>
     <input class="search" id="search" placeholder="title or summary…" />
@@ -411,7 +441,9 @@ function applyFilter() {
   const levels = computeLevels(visibleNodes, visibleEdges);
   const nextNodes = visibleNodes.map(n => ({
     id: n.id,
-    label: shortLabel(n.title || n.id),
+    // Prefer the agent-supplied short_label (kept terse on purpose);
+    // fall back to a truncated title for legacy notes that don't have one.
+    label: n.short_label || shortLabel(n.title || n.id),
     title: tooltipFor(n),
     color: kindColor(n.kind),
     font: { color: STATUS_FONT[n.status] || "#d7dae0" },
@@ -429,7 +461,9 @@ function applyFilter() {
       id: "e" + i,
       from: e.from,
       to: e.to,
-      label: e.type,
+      // Edge labels removed — the sidebar legend identifies the three
+      // edge types by color. The type is still in the tooltip on hover.
+      title: e.type,
       color: {
         color: baseColor,
         opacity: isStructural ? 1.0 : 0.35,
@@ -466,6 +500,8 @@ function renderList(nodes) {
       ? new Date(n.updated_at).toISOString().slice(0, 10)
       : "";
     const selected = n.id === selectedId ? " selected" : "";
+    // List row shows the full title (vertical space is cheap here); the
+    // graph view is where short_label saves clutter.
     return `
       <div class="row${selected}" data-id="${esc(n.id)}">
         <div class="head">
