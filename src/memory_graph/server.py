@@ -203,6 +203,24 @@ except ImportError:
     _AGENT_SDK_AVAILABLE = False
 
 
+def _count_writes(store) -> dict[str, int]:
+    """Snapshot the store's mutation-relevant counters."""
+    n_nodes = store.conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+    n_edges = store.conn.execute("SELECT COUNT(*) FROM edges").fetchone()[0]
+    n_superseded = store.conn.execute(
+        "SELECT COUNT(*) FROM nodes WHERE status='superseded'"
+    ).fetchone()[0]
+    return {"nodes": n_nodes, "edges": n_edges, "superseded": n_superseded}
+
+
+def _diff_writes(before: dict[str, int], after: dict[str, int]) -> dict[str, int]:
+    return {
+        "nodes_written": after["nodes"] - before["nodes"],
+        "edges_written": after["edges"] - before["edges"],
+        "nodes_superseded": after["superseded"] - before["superseded"],
+    }
+
+
 @mcp.tool()
 async def memory_remember(dump: str) -> dict[str, Any]:
     """Decompose a free-form session summary into memory notes.
@@ -211,13 +229,32 @@ async def memory_remember(dump: str) -> dict[str, Any]:
     surprises, gotchas). The memory sub-agent decides on abstraction
     levels, finds connections in the existing graph, writes the notes,
     and supersedes any contradictions.
+
+    The response includes a `writes` summary (nodes_written,
+    edges_written, nodes_superseded) measured against the store before
+    and after the sub-agent ran — so the caller can detect when the
+    sub-agent's synthesis claims writes that didn't actually persist.
     """
     if not _AGENT_SDK_AVAILABLE:
         return _sdk_missing("remember")
     from memory_graph.orchestration import remember as _remember
 
-    synthesis = await _remember(dump, store=get_store())
-    return {"synthesis": synthesis}
+    store = get_store()
+    before = _count_writes(store)
+    synthesis = await _remember(dump, store=store)
+    writes = _diff_writes(before, _count_writes(store))
+    result: dict[str, Any] = {"synthesis": synthesis, "writes": writes}
+    if writes["nodes_written"] == 0 and writes["nodes_superseded"] == 0:
+        # Empty deltas are sometimes legitimate (everything was a duplicate, the
+        # dump was a clarification, etc.), but they're often the signature of a
+        # sub-agent that hallucinated success. Surface a hint so the caller
+        # can react.
+        result["warning"] = (
+            "sub-agent finished with no changes to the store. If its "
+            "synthesis claims writes, the underlying tool calls likely "
+            "failed — check the MCP server's stderr."
+        )
+    return result
 
 
 @mcp.tool()
@@ -241,14 +278,17 @@ async def memory_compact(scope: str | None = None) -> dict[str, Any]:
     """Run a consolidation pass (merges, hubs, supersessions) over a region.
 
     `scope` is "cluster:X", "topic:Y", "recent", or None (sub-agent
-    picks). Returns a summary of changes made.
+    picks). Returns a summary of changes made plus a `writes` delta.
     """
     if not _AGENT_SDK_AVAILABLE:
         return _sdk_missing("compact")
     from memory_graph.orchestration import compact as _compact
 
-    synthesis = await _compact(get_store(), scope=scope)
-    return {"synthesis": synthesis}
+    store = get_store()
+    before = _count_writes(store)
+    synthesis = await _compact(store, scope=scope)
+    writes = _diff_writes(before, _count_writes(store))
+    return {"synthesis": synthesis, "writes": writes}
 
 
 def _sdk_missing(tool: str) -> dict[str, Any]:

@@ -58,12 +58,40 @@ def compose_system_prompt(task: str, store_root: str | Path) -> str:
     )
 
 
+def _ok(value: Any) -> dict[str, Any]:
+    """SDK tool 'success' envelope."""
+    return {"content": [{"type": "text", "text": _json(value)}]}
+
+
+def _err(exc: BaseException) -> dict[str, Any]:
+    """SDK tool 'error' envelope. The sub-agent sees isError=True and the
+    exception text so it can react instead of treating the call as silent
+    success (which is what previously let it hallucinate writes that never
+    landed).
+    """
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": _json(
+                    {"error": f"{type(exc).__name__}: {exc}"}
+                ),
+            }
+        ],
+        "isError": True,
+    }
+
+
 def build_sdk_tools(store: Store) -> list[Any]:
     """Build in-process SDK tool wrappers over `store`.
 
     Each returns a JSON-serializable dict that the SDK forwards as the
     tool's result. Tool naming matches `DEFAULT_TOOL_NAMES` so the
     `allowed_tools` filter is straightforward.
+
+    Every wrapper traps exceptions and returns an isError envelope so the
+    sub-agent always sees a clear success/failure signal — never a silent
+    crash that gets misinterpreted as success.
     """
     from claude_agent_sdk import tool  # local import: SDK is optional
 
@@ -73,13 +101,16 @@ def build_sdk_tools(store: Store) -> list[Any]:
         {"query": str, "k": int, "kind": str, "status": str},
     )
     async def t_search(args: dict[str, Any]) -> dict[str, Any]:
-        hits = store.search(
-            args["query"],
-            k=int(args.get("k", 10)),
-            kind=args.get("kind"),
-            status=args.get("status"),
-        )
-        return {"content": [{"type": "text", "text": _json(hits)}]}
+        try:
+            hits = store.search(
+                args["query"],
+                k=int(args.get("k", 10)),
+                kind=args.get("kind"),
+                status=args.get("status"),
+            )
+            return _ok(hits)
+        except Exception as exc:
+            return _err(exc)
 
     @tool(
         "get",
@@ -87,9 +118,11 @@ def build_sdk_tools(store: Store) -> list[Any]:
         {"note_id": str},
     )
     async def t_get(args: dict[str, Any]) -> dict[str, Any]:
-        note = store.get(args["note_id"])
-        payload = None if note is None else _note_dict(note)
-        return {"content": [{"type": "text", "text": _json(payload)}]}
+        try:
+            note = store.get(args["note_id"])
+            return _ok(None if note is None else _note_dict(note))
+        except Exception as exc:
+            return _err(exc)
 
     @tool(
         "neighbors",
@@ -97,13 +130,16 @@ def build_sdk_tools(store: Store) -> list[Any]:
         {"note_id": str, "types": list, "depth": int, "direction": str},
     )
     async def t_neighbors(args: dict[str, Any]) -> dict[str, Any]:
-        out = store.neighbors(
-            args["note_id"],
-            types=args.get("types"),
-            depth=int(args.get("depth", 1)),
-            direction=args.get("direction", "out"),
-        )
-        return {"content": [{"type": "text", "text": _json(out)}]}
+        try:
+            out = store.neighbors(
+                args["note_id"],
+                types=args.get("types"),
+                depth=int(args.get("depth", 1)),
+                direction=args.get("direction", "out"),
+            )
+            return _ok(out)
+        except Exception as exc:
+            return _err(exc)
 
     @tool(
         "capture",
@@ -115,21 +151,24 @@ def build_sdk_tools(store: Store) -> list[Any]:
         },
     )
     async def t_capture(args: dict[str, Any]) -> dict[str, Any]:
-        edges = [
-            Edge(to_id=e["to"], type=e["type"], weight=float(e.get("weight", 1.0)))
-            for e in (args.get("edges") or [])
-        ]
-        result = store.capture(
-            title=args["title"], summary=args["summary"], body=args["body"],
-            kind=args["kind"],
-            status=args.get("status", "active"),
-            tags=args.get("tags") or [],
-            edges=edges,
-            happened_at=args.get("happened_at"),
-            last_verified_at=args.get("last_verified_at"),
-            confidence=float(args.get("confidence", 1.0)),
-        )
-        return {"content": [{"type": "text", "text": _json(result)}]}
+        try:
+            edges = [
+                Edge(to_id=e["to"], type=e["type"], weight=float(e.get("weight", 1.0)))
+                for e in (args.get("edges") or [])
+            ]
+            result = store.capture(
+                title=args["title"], summary=args["summary"], body=args["body"],
+                kind=args["kind"],
+                status=args.get("status", "active"),
+                tags=args.get("tags") or [],
+                edges=edges,
+                happened_at=args.get("happened_at"),
+                last_verified_at=args.get("last_verified_at"),
+                confidence=float(args.get("confidence", 1.0)),
+            )
+            return _ok(result)
+        except Exception as exc:
+            return _err(exc)
 
     @tool(
         "capture_batch",
@@ -137,8 +176,10 @@ def build_sdk_tools(store: Store) -> list[Any]:
         {"notes": list},
     )
     async def t_capture_batch(args: dict[str, Any]) -> dict[str, Any]:
-        result = store.capture_batch(args["notes"])
-        return {"content": [{"type": "text", "text": _json(result)}]}
+        try:
+            return _ok(store.capture_batch(args["notes"]))
+        except Exception as exc:
+            return _err(exc)
 
     @tool(
         "link",
@@ -146,11 +187,14 @@ def build_sdk_tools(store: Store) -> list[Any]:
         {"from_id": str, "to_id": str, "type": str, "weight": float},
     )
     async def t_link(args: dict[str, Any]) -> dict[str, Any]:
-        store.link(
-            args["from_id"], args["to_id"], args["type"],
-            weight=float(args.get("weight", 1.0)),
-        )
-        return {"content": [{"type": "text", "text": "ok"}]}
+        try:
+            store.link(
+                args["from_id"], args["to_id"], args["type"],
+                weight=float(args.get("weight", 1.0)),
+            )
+            return _ok("ok")
+        except Exception as exc:
+            return _err(exc)
 
     @tool(
         "unlink",
@@ -158,8 +202,11 @@ def build_sdk_tools(store: Store) -> list[Any]:
         {"from_id": str, "to_id": str, "type": str},
     )
     async def t_unlink(args: dict[str, Any]) -> dict[str, Any]:
-        store.unlink(args["from_id"], args["to_id"], args["type"])
-        return {"content": [{"type": "text", "text": "ok"}]}
+        try:
+            store.unlink(args["from_id"], args["to_id"], args["type"])
+            return _ok("ok")
+        except Exception as exc:
+            return _err(exc)
 
     @tool(
         "supersede",
@@ -167,12 +214,15 @@ def build_sdk_tools(store: Store) -> list[Any]:
         {"old_id": str, "new_id": str, "reason": str},
     )
     async def t_supersede(args: dict[str, Any]) -> dict[str, Any]:
-        store.supersede(
-            old_id=args["old_id"],
-            new_id=args["new_id"],
-            reason=args.get("reason", ""),
-        )
-        return {"content": [{"type": "text", "text": "ok"}]}
+        try:
+            store.supersede(
+                old_id=args["old_id"],
+                new_id=args["new_id"],
+                reason=args.get("reason", ""),
+            )
+            return _ok("ok")
+        except Exception as exc:
+            return _err(exc)
 
     @tool(
         "mark",
@@ -180,8 +230,11 @@ def build_sdk_tools(store: Store) -> list[Any]:
         {"note_id": str, "status": str},
     )
     async def t_mark(args: dict[str, Any]) -> dict[str, Any]:
-        store.mark(args["note_id"], args["status"])
-        return {"content": [{"type": "text", "text": "ok"}]}
+        try:
+            store.mark(args["note_id"], args["status"])
+            return _ok("ok")
+        except Exception as exc:
+            return _err(exc)
 
     @tool(
         "status",
@@ -189,7 +242,10 @@ def build_sdk_tools(store: Store) -> list[Any]:
         {},
     )
     async def t_status(args: dict[str, Any]) -> dict[str, Any]:
-        return {"content": [{"type": "text", "text": _json(store.status())}]}
+        try:
+            return _ok(store.status())
+        except Exception as exc:
+            return _err(exc)
 
     return [
         t_search, t_get, t_neighbors,

@@ -106,6 +106,128 @@ def test_build_sdk_tools_search_returns_text_content(s: Store):
     assert "alpha bravo" in blocks[0]["text"] or "id" in blocks[0]["text"]
 
 
+# -- SDK tool error envelope ------------------------------------------------
+
+
+def test_sdk_tools_return_error_envelope_on_exception(s: Store):
+    """Regression: when a tool's underlying call raises, the wrapper must
+    return an isError envelope so the sub-agent sees a clear failure rather
+    than a silent success it might paper over with hallucinated writes.
+    """
+    pytest.importorskip("claude_agent_sdk")
+    import asyncio
+    import json as _json
+
+    from memory_graph.orchestration.runner import build_sdk_tools
+
+    # Force capture() to blow up.
+    def boom(*a, **kw):
+        raise RuntimeError("simulated SQLite locked")
+
+    s.capture = boom  # type: ignore[method-assign]
+    tools = build_sdk_tools(s)
+    capture_tool = next(t for t in tools if t.name == "capture")
+
+    out = asyncio.run(
+        capture_tool.handler({
+            "title": "t", "summary": "s", "body": "b", "kind": "capture"
+        })
+    )
+    assert out.get("isError") is True
+    body = _json.loads(out["content"][0]["text"])
+    assert "error" in body
+    assert "RuntimeError" in body["error"]
+    assert "simulated SQLite locked" in body["error"]
+
+
+def test_sdk_tools_search_error_envelope(s: Store):
+    """Same guarantee for the read-side tools — exceptions surface, not silenced."""
+    pytest.importorskip("claude_agent_sdk")
+    import asyncio
+    import json as _json
+
+    from memory_graph.orchestration.runner import build_sdk_tools
+
+    def boom(*a, **kw):
+        raise OSError("simulated fs failure")
+
+    s.search = boom  # type: ignore[method-assign]
+    tools = build_sdk_tools(s)
+    search_tool = next(t for t in tools if t.name == "search")
+    out = asyncio.run(search_tool.handler({"query": "anything"}))
+    assert out.get("isError") is True
+    body = _json.loads(out["content"][0]["text"])
+    assert "OSError" in body["error"]
+
+
+# -- memory_remember writes-delta safety net --------------------------------
+
+
+def test_memory_remember_includes_writes_delta(monkeypatch, tmp_path):
+    """The MCP server's memory_remember must report node/edge deltas measured
+    against the store, so a sub-agent that hallucinates success is detectable.
+    """
+    import asyncio
+    import sys
+
+    from memory_graph import server as srv
+    from memory_graph.embed import FakeEmbedder
+
+    root = tmp_path / ".memory-graph"
+    root.mkdir()
+    monkeypatch.setenv("MEMORY_GRAPH_ROOT", str(root))
+    srv._store = None
+    srv._store_root = None
+    monkeypatch.setattr(srv, "_make_embedder", lambda: FakeEmbedder(dim=32))
+
+    import memory_graph.orchestration.remember  # noqa: F401
+
+    remember_mod = sys.modules["memory_graph.orchestration.remember"]
+
+    # First subtest: sub-agent claims success but doesn't actually write.
+    async def lying_sub_agent(**kwargs):
+        return "Wrote 9 notes successfully!"
+
+    monkeypatch.setattr(remember_mod, "run_subagent", lying_sub_agent)
+    result = asyncio.run(srv.memory_remember(dump="anything"))
+    assert result["writes"]["nodes_written"] == 0
+    assert result["writes"]["edges_written"] == 0
+    assert "warning" in result
+    assert "hallucinated" in result["warning"] or "no changes" in result["warning"]
+
+
+def test_memory_remember_no_warning_when_writes_actually_happen(monkeypatch, tmp_path):
+    """Counterpart: if the sub-agent *did* write, the response should NOT carry
+    the warning."""
+    import asyncio
+    import sys
+
+    from memory_graph import server as srv
+    from memory_graph.embed import FakeEmbedder
+
+    root = tmp_path / ".memory-graph"
+    root.mkdir()
+    monkeypatch.setenv("MEMORY_GRAPH_ROOT", str(root))
+    srv._store = None
+    srv._store_root = None
+    monkeypatch.setattr(srv, "_make_embedder", lambda: FakeEmbedder(dim=32))
+
+    import memory_graph.orchestration.remember  # noqa: F401
+
+    remember_mod = sys.modules["memory_graph.orchestration.remember"]
+
+    # The fake sub-agent actually writes a node via the store passed to it.
+    async def writing_sub_agent(**kwargs):
+        store = kwargs["store"]
+        store.capture(title="t", summary="s", body="b", kind="capture")
+        return "Wrote 1 note."
+
+    monkeypatch.setattr(remember_mod, "run_subagent", writing_sub_agent)
+    result = asyncio.run(srv.memory_remember(dump="anything"))
+    assert result["writes"]["nodes_written"] == 1
+    assert "warning" not in result
+
+
 # -- async-from-event-loop regression ---------------------------------------
 
 
