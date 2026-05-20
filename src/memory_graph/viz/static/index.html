@@ -142,35 +142,51 @@
 <script>
 // ---- palette --------------------------------------------------------------
 
-// Kind → color. Picked to be readable on the dark canvas.
+// Kind is now free-text. Color a handful of common labels; fall back to
+// a hash-based color for anything else so unknown labels still get a
+// stable, distinct color.
 const KIND_COLORS = {
-  capture:     "#9aa4b4",
-  lesson:      "#6aa1ff",
+  observation: "#9aa4b4",
+  experiment:  "#f5a25d",
   principle:   "#7ee787",
   decision:    "#c084fc",
-  experiment:  "#f5a25d",
-  incident:    "#f87171",
+  mistake:     "#f87171",
+  bug_fix:     "#5eead4",
+  former_state:"#b08968",
+  user_said:   "#facc15",
+  // legacy kinds from v1 stores — same colors so existing notes stay readable
+  capture:     "#9aa4b4",
+  lesson:      "#6aa1ff",
   reference:   "#5eead4",
+  incident:    "#f87171",
   transition:  "#f0abfc",
   archaeology: "#b08968",
   next_step:   "#facc15",
 };
 const DEFAULT_COLOR = "#9aa4b4";
 
-// Edge type → color.
+function kindColor(kind) {
+  if (!kind) return DEFAULT_COLOR;
+  if (kind in KIND_COLORS) return KIND_COLORS[kind];
+  // Deterministic hash → HSL for unknown labels.
+  let h = 0;
+  for (let i = 0; i < kind.length; i++) h = (h * 31 + kind.charCodeAt(i)) >>> 0;
+  return `hsl(${h % 360}, 55%, 65%)`;
+}
+
+// Edge palette — v2's three edge types plus legacy fallbacks for stores
+// that haven't been re-migrated yet (the index.db migrates on open, but
+// a viz hitting a snapshot file could still see old types).
 const EDGE_COLORS = {
-  generalizes:  "#6aa1ff",
-  specializes: "#6aa1ff",
-  derived_from: "#7ee787",
-  supports:     "#7ee787",
-  contradicts:  "#f87171",
-  supersedes:   "#f5a25d",
-  corrects:     "#f87171",
-  related:      "#5b6172",
-  coupled_with: "#c084fc",
-  applies_to:   "#5eead4",
-  impacts:      "#facc15",
-  informs:      "#f0abfc",
+  abstracts:    "#6aa1ff",   // up/down the abstraction ladder
+  related:      "#5b6172",   // lateral
+  supersedes:   "#f5a25d",   // lifecycle (also dashes in the viz)
+  // v1 fallbacks — should never appear after migration, but harmless:
+  generalizes:  "#6aa1ff", specializes: "#6aa1ff",
+  derived_from: "#6aa1ff", supports: "#6aa1ff",
+  contradicts:  "#f87171", corrects: "#f87171",
+  coupled_with: "#c084fc", applies_to: "#5eead4",
+  impacts:      "#facc15", informs: "#f0abfc",
   confirmed_by: "#7ee787",
 };
 const DEFAULT_EDGE_COLOR = "#3d4252";
@@ -239,7 +255,7 @@ function renderKindFilters() {
   const counts = G.stats.by_kind;
   const kinds = Object.keys(counts).sort();
   el.innerHTML = kinds.map(k => {
-    const color = KIND_COLORS[k] || DEFAULT_COLOR;
+    const color = kindColor(k);
     return `<label>
       <input type="checkbox" data-kind="${esc(k)}" checked />
       <span class="swatch" style="background:${color}"></span>
@@ -368,7 +384,7 @@ function renderList(nodes) {
     return;
   }
   el.innerHTML = sorted.map(n => {
-    const color = KIND_COLORS[n.kind] || DEFAULT_COLOR;
+    const color = kindColor(n.kind);
     const date = n.updated_at
       ? new Date(n.updated_at).toISOString().slice(0, 10)
       : "";

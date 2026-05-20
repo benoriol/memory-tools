@@ -1,51 +1,37 @@
-"""Dataclasses for a memory note and its associated structure."""
+"""Dataclasses for a memory note and its associated structure.
+
+The model is deliberately flat. There's one node type (any note); the
+`kind` field is a free-text label whose only job is to help humans (and
+the agent) describe a note at a glance. The system does not branch on it.
+
+Edges are also a short, fixed vocabulary:
+
+- `abstracts` (directed). `from_id → to_id` means the **from** note is
+  *more abstract* than the **to** note. To walk upward (toward more
+  abstract context) from a leaf, follow **incoming** abstracts edges;
+  to walk downward (toward concrete detail) from a parent, follow
+  outgoing ones.
+- `related` (undirected in meaning, though the row has a direction).
+  Lateral / associative connection.
+- `supersedes` (directed). The new note replaces the old. Also flips
+  `status='superseded'` on the old node — the only behavior-bearing
+  edge.
+
+Suggested labels: `user_said`, `experiment`, `mistake`, `bug_fix`,
+`former_state`, `decision`, `principle`, `observation`. Free text —
+new labels can appear without any schema change.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
 
-Kind = Literal[
-    "capture",
-    "lesson",
-    "principle",
-    "decision",
-    "experiment",
-    "incident",
-    "reference",
-    "transition",
-    "archaeology",
-    "next_step",
-]
-
-Status = Literal[
-    "active",
-    "validated",
-    "unsure",
-    "disputed",
-    "superseded",
-    "corrected",
-    "disproven",
-    "stale",
-    "open",      # for next_step kinds
-    "archived",
-]
-
-EdgeType = Literal[
-    "generalizes",
-    "specializes",
-    "derived_from",
-    "supports",
-    "contradicts",
-    "supersedes",
-    "corrects",
-    "applies_to",
-    "coupled_with",
-    "impacts",
-    "informs",
-    "confirmed_by",
-    "related",
-]
+# Plain `str` aliases — no Literal constraint. The schema accepts any
+# value; the canonical vocabulary is just a convention enforced by the
+# sub-agent prompts and viz palette, not by the storage layer.
+Kind = str
+Status = str
+EdgeType = str
 
 
 @dataclass(slots=True)

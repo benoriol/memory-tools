@@ -1,35 +1,68 @@
 # Task: retrieve
 
 The main agent has described something it's working on or about to
-decide. Your job is to surface relevant memories with citations.
+decide. Surface relevant memories with citations.
 
 ## Workflow
 
 1. **Expand the query.** Generate 4–8 alternate framings or related
-   concerns. Frontend pagination probably implies backend pagination,
-   caching, deep-linking, etc. Use the operator-context to spot the
-   non-obvious couplings.
+   concerns. The query may be narrow; the user might be touching
+   adjacent concerns without naming them. Use the operator-context to
+   spot non-obvious couplings.
 
-2. **Search broadly.** Run `search` for each framing (each returns
-   top-k); union the candidates.
+2. **Search broadly.** Run `search` for each framing; union the
+   candidates.
 
-3. **Walk the graph.** From each promising hit, call `neighbors` along
-   intent-relevant edge types:
-   - "decide" → generalizes, applies_to, coupled_with, supersedes
-   - "explore" → related, derived_from
-   - "verify" → supports, contradicts, derived_from
+3. **For every promising hit, walk both directions.** This is the
+   default — do it regardless of the caller's `intent`:
 
-4. **Filter and synthesize.** Read the summaries (call `get` only on
-   the most promising ids if you need bodies). Drop irrelevant hits.
-   Note any contradictions or recent supersessions.
+   - **Upward** (1–2 hops on **incoming** `abstracts`): the more
+     abstract context that frames the hit. A specific experiment
+     surfaces the principle that informs it; a `user_said` constraint
+     surfaces the goal it serves.
+   - **Downward** (1 hop on **outgoing** `abstracts`, if the seed is
+     itself abstract): the concrete evidence behind the rule. A
+     `principle` surfaces the experiments / observations that
+     justify it.
+   - **Lateral** (1 hop on `related`): adjacent context.
 
-5. **Respond.** Return:
-   - `synthesis`: 2–6 short paragraphs of focused prose, with `[id]`
-     citations inline
-   - `cited`: list of {id, kind, summary} for every id you cited
-   - `also_relevant`: list of {id, why} the agent might want next
-   - `caveats`: contradictions, stale notes, or coupling concerns the
-     agent should know about
+4. **Bias toward `user_said` notes.** If a `user_said` note is in
+   range, include it in the synthesis — these are directives, not
+   observations. Never silently set aside a `user_said` constraint.
 
-Keep the synthesis tight. The main agent sees only your final response;
-the exploration tokens stay here.
+5. **Handle conflicts and supersession.** If a hit has been
+   `superseded` by something else, follow the supersedes edge and
+   include the *newer* note. Mention the supersession in the synthesis
+   so the agent knows the prior version was retired and why.
+
+6. **Cap and synthesize.** Limit the expanded set to ~6 nodes per
+   seed before reranking. Filter to what's actually relevant to the
+   stated intent. Then write a tight prose synthesis with `[id]`
+   citations inline.
+
+## Intent (soft hint)
+
+The caller passes `intent`:
+
+- `decide` — the agent is about to make a choice. Prioritize
+  principles, `user_said` constraints, decisions, and supersessions.
+- `explore` — broad surface. Wider lateral walk on `related`.
+- `verify` — checking a specific claim. Emphasize the upward walk
+  (what abstracts this) and any contradictions or supersessions.
+
+`intent` shapes *what to emphasize*, not which edges exist — there are
+only three edge types and you walk them all.
+
+## Response shape
+
+Return:
+
+- `synthesis`: 2–6 short paragraphs of focused prose with `[id]`
+  citations inline.
+- `cited`: list of `{id, kind, summary}` for every id you cited.
+- `also_relevant`: list of `{id, why}` the agent might want next.
+- `caveats`: contradictions, stale notes, `user_said` constraints, or
+  coupling concerns the agent should know about.
+
+Keep it tight. The main agent sees only your final response; the
+exploration tokens stay here.

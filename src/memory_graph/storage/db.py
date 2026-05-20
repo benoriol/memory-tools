@@ -1,4 +1,4 @@
-"""SQLite connection management and schema migration."""
+"""SQLite connection management and schema bookkeeping."""
 
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ _SCHEMA_SQL = files("memory_graph.storage").joinpath("schema.sql").read_text()
 
 
 def open_db(path: str | Path) -> sqlite3.Connection:
-    """Open (and migrate, if needed) the SQLite index at `path`.
+    """Open the SQLite index at `path`.
 
-    The parent directory is created if it doesn't exist. Foreign keys and
-    WAL journaling are enabled. The schema is applied idempotently and the
-    `meta.schema_version` row is set on first creation.
+    The parent directory is created if it doesn't exist. Foreign keys
+    and WAL journaling are enabled. The schema is applied idempotently
+    and the `meta.schema_version` row is set on first creation.
     """
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,6 @@ def _ensure_version(conn: sqlite3.Connection) -> None:
             f"Store schema version {current} is newer than this code "
             f"({SCHEMA_VERSION}). Upgrade memory-graph-mcp."
         )
-    # Future migrations land here when current < SCHEMA_VERSION.
 
 
 def get_schema_version(conn: sqlite3.Connection) -> int:

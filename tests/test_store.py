@@ -146,13 +146,15 @@ def test_capture_does_not_flag_unrelated(s: Store):
 
 
 def test_capture_batch_resolves_placeholders(s: Store):
+    # `abstracts: lesson → capture` means the lesson is more abstract;
+    # walking outgoing edges from the lesson goes toward concrete evidence.
     results = s.capture_batch([
-        {**_make_kwargs(summary="raw observation"), "kind": "capture", "note_id": "@1"},
+        {**_make_kwargs(summary="raw observation"), "kind": "observation", "note_id": "@1"},
         {
             **_make_kwargs(summary="distilled lesson"),
-            "kind": "lesson",
+            "kind": "principle",
             "note_id": "@2",
-            "edges": [{"to": "@1", "type": "derived_from"}],
+            "edges": [{"to": "@1", "type": "abstracts"}],
         },
     ])
     assert len(results) == 2
@@ -161,7 +163,7 @@ def test_capture_batch_resolves_placeholders(s: Store):
     assert not lesson_id.startswith("@")
 
     lesson = s.get(lesson_id)
-    assert lesson.edges == [Edge(to_id=cap_id, type="derived_from", weight=1.0)]
+    assert lesson.edges == [Edge(to_id=cap_id, type="abstracts", weight=1.0)]
 
 
 def test_capture_batch_accepts_real_ids(s: Store):
@@ -183,14 +185,14 @@ def test_neighbors_depth_one_outgoing(s: Store):
     a = s.capture(**_make_kwargs(summary="A"))["id"]
     b = s.capture(**_make_kwargs(summary="B"))["id"]
     c = s.capture(**_make_kwargs(summary="C"))["id"]
-    s.link(a, b, "generalizes")
+    s.link(a, b, "abstracts")
     s.link(a, c, "related")
 
     nbrs = s.neighbors(a, depth=1)
     nbr_ids = {n["id"] for n in nbrs}
     assert nbr_ids == {b, c}
     by_id = {n["id"]: n for n in nbrs}
-    assert by_id[b]["edge_type"] == "generalizes"
+    assert by_id[b]["edge_type"] == "abstracts"
     assert by_id[c]["edge_type"] == "related"
 
 
@@ -198,10 +200,10 @@ def test_neighbors_filters_by_edge_type(s: Store):
     a = s.capture(**_make_kwargs(summary="A"))["id"]
     b = s.capture(**_make_kwargs(summary="B"))["id"]
     c = s.capture(**_make_kwargs(summary="C"))["id"]
-    s.link(a, b, "generalizes")
+    s.link(a, b, "abstracts")
     s.link(a, c, "related")
 
-    nbrs = s.neighbors(a, types=["generalizes"], depth=1)
+    nbrs = s.neighbors(a, types=["abstracts"], depth=1)
     assert [n["id"] for n in nbrs] == [b]
 
 

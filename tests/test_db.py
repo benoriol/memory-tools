@@ -65,3 +65,5 @@ def test_edge_cascade_deletes_when_node_removed(tmp_path: Path):
         assert rows == []
     finally:
         conn.close()
+
+

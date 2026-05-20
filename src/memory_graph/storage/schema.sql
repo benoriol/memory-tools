@@ -14,12 +14,18 @@ CREATE TABLE IF NOT EXISTS nodes (
     title             TEXT NOT NULL,
     summary           TEXT NOT NULL,
     body              TEXT NOT NULL,
+    -- `kind` is a free-text label for the reader's orientation
+    -- (e.g. 'experiment', 'mistake', 'user_said', 'bug_fix',
+    --  'former_state', 'principle'). The system does not branch on it.
     kind              TEXT NOT NULL,
+    -- `status` IS behavior-bearing (drives retrieval emphasis and
+    -- supersession): one of 'active', 'unsure', 'superseded',
+    -- 'disproven', 'stale', 'archived'.
     status            TEXT NOT NULL DEFAULT 'active',
     created_at        INTEGER NOT NULL,
     updated_at        INTEGER NOT NULL,
-    -- eventive notes (experiment, decision, incident, transition, archaeology)
-    -- carry a happened_at; stative notes (reference) carry last_verified_at.
+    -- Optional event/verification timestamps — both available on every
+    -- note; pick whichever fits the content. Either may be NULL.
     happened_at       INTEGER,
     last_verified_at  INTEGER,
     confidence        REAL    NOT NULL DEFAULT 1.0,
@@ -35,6 +41,15 @@ CREATE INDEX IF NOT EXISTS idx_nodes_kind   ON nodes(kind);
 CREATE INDEX IF NOT EXISTS idx_nodes_status ON nodes(status);
 CREATE INDEX IF NOT EXISTS idx_nodes_cluster ON nodes(cluster_id);
 
+-- Edges. v2 vocabulary is just three types:
+--   'abstracts' — directed: from_id is MORE ABSTRACT than to_id.
+--                 Walking outgoing -> concrete detail.
+--                 Walking incoming -> abstract context.
+--   'related'   — lateral / associative.
+--   'supersedes'— directed: from_id replaces to_id; also flips
+--                 to_id.status to 'superseded'.
+-- The column is plain TEXT (no CHECK constraint) so new edge types
+-- can be added without a schema bump if/when needed.
 CREATE TABLE IF NOT EXISTS edges (
     from_id     TEXT NOT NULL,
     to_id       TEXT NOT NULL,

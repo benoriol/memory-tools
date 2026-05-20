@@ -7,24 +7,29 @@
 ## Memory protocol
 
 This project has a persistent, per-project memory graph wired in via
-the `memory-graph` MCP server. You have 13 `memory_*` tools available.
+the `memory-graph` MCP server. The model is deliberately flat: every
+note is the same kind of thing, with a free-text `kind` label for
+description and three edge types — `abstracts`, `related`,
+`supersedes` — that's it.
 
-The three high-level ones to use day-to-day:
+Three high-level tools to use day-to-day:
 
-- **`memory_retrieve(query, intent="decide")`** — surface relevant past
-  memories before acting. Cheap; the sub-agent does the walking and
-  returns a focused synthesis with cited ids.
-- **`memory_remember(dump)`** — write notes after work. Pass a thorough,
-  free-form description (multi-paragraph is fine). The sub-agent
-  decomposes it into the right notes at the right abstraction levels —
-  you don't have to think about kinds or edges.
-- **`memory_compact(scope?)`** — occasional cleanup pass over a region.
-  Use rarely; only when memory feels noisy.
+- **`memory_retrieve(query, intent="decide|explore|verify")`** —
+  surface relevant past memories before acting. Cheap; the sub-agent
+  walks the graph (both upward toward abstract context and downward
+  toward concrete evidence) and returns a focused synthesis with
+  cited ids.
+- **`memory_remember(dump)`** — write notes after work. Pass a
+  thorough, free-form description (multi-paragraph is fine). The
+  sub-agent slices it into one or more notes, picks `kind` labels,
+  and connects them with `abstracts` / `related` edges as appropriate.
+- **`memory_compact(scope?)`** — occasional cleanup pass over a
+  region. Use rarely; only when memory feels noisy.
 
-Plus ten primitives if you want direct control: `memory_search`,
-`memory_get`, `memory_neighbors`, `memory_capture`, `memory_capture_batch`,
-`memory_link`, `memory_unlink`, `memory_supersede`, `memory_mark`,
-`memory_status`.
+Plus primitives (`memory_search`, `memory_get`, `memory_neighbors`,
+`memory_capture`, `memory_capture_batch`, `memory_link`,
+`memory_unlink`, `memory_supersede`, `memory_mark`, `memory_status`)
+for direct control.
 
 ### When to call `memory_retrieve`
 
@@ -43,21 +48,24 @@ argue why the prior finding no longer applies, or change course.
 
 Strongly encouraged after:
 
-- A completed experiment — **successes AND failures both matter**
-- A non-obvious design decision
-- A surprising bug whose lesson generalizes
+- Completing an experiment — **successes AND failures both matter**
+- Making a non-obvious design decision
+- Hitting a surprising bug whose lesson generalizes
 - Learning something that would change how you'd approach this next time
+- The user shares substantive context (vision, constraint,
+  preference, plan) — capture these as `kind: user_said`
 
 Pass a thorough dump. Include concrete handles (file paths, commit
 hashes, metrics, hyperparameters) where relevant.
 
 ### Heuristic for "worth remembering"
 
-> Would you tell a teammate about this lesson? Would you want to recall
-> it six months from now?
+> Would you tell a teammate about this lesson? Would you want to
+> recall it six months from now?
 
 If yes → `memory_remember`. If it's obvious from the code → don't.
-Failed experiments are the highest-leverage notes; they save future-you
-from retrying the same dead end.
+Failed experiments and `user_said` directives are the highest-leverage
+notes; they save future-you from retrying dead ends or violating user
+intent.
 
 <!-- memory-graph-mcp:protocol:end -->

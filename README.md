@@ -3,10 +3,13 @@
 Per-project graph memory for Claude Code, exposed as an MCP server.
 
 Notes are stored as markdown files with YAML frontmatter; a SQLite
-index provides fast lookups and embedding-based semantic search.
-Edges between notes form a typed graph (`generalizes`, `derived_from`,
-`coupled_with`, `supersedes`, etc.) that a memory specialist sub-agent
-navigates instead of relying purely on similarity.
+index provides fast lookups and embedding-based semantic search. The
+model is deliberately flat: every note is the same kind of thing with
+a free-text `kind` label (e.g. `experiment`, `mistake`, `user_said`,
+`bug_fix`, `principle`) that's purely descriptive. Three edge types
+do the structural work — `abstracts` (directed: from-node is more
+abstract than to-node), `related` (lateral), and `supersedes` (the
+only behavior-bearing edge — flips the old note's status).
 
 ## How it works
 

@@ -1,38 +1,43 @@
 # Task: compact
 
-You're consolidating part of the graph. The main agent has either
-named a scope (`cluster:X`, `topic:Y`, or `recent`) or asked for a
-general pass.
+Consolidate part of the graph. The caller has either named a `scope`
+(e.g. `cluster:X`, `topic:Y`, `recent`) or asked for a general pass.
 
 ## Workflow
 
-1. **Pick a region.** If a scope was given, use it. Otherwise look at
-   `status()` and the operator-context for the densest / dirtiest
-   region (high node count, recent activity, status:unsure or
-   status:disputed concentration).
+1. **Pick a region.** If a scope was given, use it. Otherwise consult
+   `status()` and the operator-context for the densest or dirtiest
+   region — recent activity, many `unsure` / `disputed` nodes, high
+   embedding density without abstraction structure.
 
-2. **Walk the region.** Use `search` and `neighbors` to enumerate the
-   notes. Read their summaries.
+2. **Walk the region.** Enumerate the notes with `search` +
+   `neighbors`. Read their summaries.
 
-3. **Spot opportunities.** For each:
-   - **Duplicate**: cosine ~1.0 with shared meaning → `supersede` the
-     weaker / older one
-   - **Cluster without a hub**: ≥5 cohesive notes on one topic without
-     a parent → propose creating a hub note (capture_batch with the
-     hub + `generalizes` edges from members)
-   - **Drifted concept**: notes that share vocabulary but mean
-     different things → leave with a note in your response
-   - **Stale stative**: `reference` notes with old `last_verified_at`
-     → call `mark(id, "stale")` if the underlying code has clearly
-     changed (you can ask `Read` if you have it; otherwise flag)
-   - **Disproven**: notes contradicted by newer evidence → mark or
-     supersede
+3. **Spot opportunities.**
+
+   - **Duplicates** (high cosine, same meaning): keep one, `supersede`
+     the others.
+   - **Missing abstraction structure**: when several notes describe
+     the same recurring pattern but no abstracting note exists,
+     write one with `kind: principle` (or another descriptive label)
+     and draw `abstracts` edges from it to the concrete members.
+   - **Drift**: notes that share vocabulary but mean different things
+     — flag in your response.
+   - **Stale**: notes referencing code that's changed. Mark with
+     `mark(id, "stale")` so retrieval down-weights them.
+   - **Disproven**: notes contradicted by newer evidence — `supersede`
+     or `mark` accordingly.
 
 4. **Apply changes.** Make the writes / marks / supersedes. Don't
    delete; the graph keeps history.
 
-5. **Respond.** Return:
-   - `region`: what you operated on
-   - `changes`: list of {action, ids, reason}
-   - `notes`: prose summary of what shape the region is in now and what
-     a future pass should look at
+5. **Respect `user_said`.** Never auto-supersede a `user_said` note
+   without flagging in `clarifications_needed`. User directives stay
+   unless the user retracts them.
+
+## Response shape
+
+- `region`: what you operated on
+- `changes`: list of `{action, ids, reason}`
+- `notes`: prose summary of the region's shape and what a future pass
+  should look at next
