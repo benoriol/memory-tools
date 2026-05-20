@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from memory_graph.orchestration.runner import (
+    COMPACT_EFFORT,
     COMPACT_MODEL,
     run_subagent,
     run_subagent_sync,
@@ -19,17 +20,16 @@ def _message(scope: str | None) -> str:
 async def compact(store: Store, *, scope: str | None = None) -> str:
     """Run a consolidation pass over a cluster or recent activity.
 
-    `scope` is "cluster:X", "topic:Y", "recent", or None (sub-agent
-    picks). Returns a summary of what changed.
-
-    Must be awaited from inside an event loop. Use `compact_sync` from
-    sync contexts.
+    Uses Opus at medium effort (the heaviest configuration of the three
+    orchestration tools) — cross-cluster reasoning is where deeper
+    thinking pays off.
     """
     return await run_subagent(
         task="compact",
         user_message=_message(scope),
         store=store,
         model=COMPACT_MODEL,
+        effort=COMPACT_EFFORT,
     )
 
 
@@ -39,4 +39,5 @@ def compact_sync(store: Store, *, scope: str | None = None) -> str:
         user_message=_message(scope),
         store=store,
         model=COMPACT_MODEL,
+        effort=COMPACT_EFFORT,
     )

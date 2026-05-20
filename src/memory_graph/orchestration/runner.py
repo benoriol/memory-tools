@@ -20,10 +20,22 @@ from memory_graph.orchestration.operator import read_operator_context
 from memory_graph.primitives import Store
 from memory_graph.storage import Edge
 
-# Default Agent SDK model. We pick Sonnet — cheap and fast enough for the
-# sub-agent's work. Bumped to Opus for compact() since that's heavier.
-DEFAULT_MODEL = "claude-sonnet-4-6"
-COMPACT_MODEL = "claude-opus-4-7"
+# Sub-agent model selection.
+#
+# remember / retrieve are mostly mechanical decomposition / search; Haiku
+# at low thinking-effort handles them in a fraction of the time and cost
+# of Sonnet. compact is heavier (cross-cluster reasoning) and warrants
+# Opus at medium effort.
+#
+# `effort` is the Agent SDK's extended-thinking budget knob:
+#   "low"    — minimal thinking, fastest
+#   "medium" — balanced (default for agentic tasks if unspecified)
+#   "high" / "xhigh" / "max" — progressively more thinking
+DEFAULT_MODEL  = "claude-haiku-4-5-20251001"
+DEFAULT_EFFORT = "low"
+
+COMPACT_MODEL  = "claude-opus-4-7"
+COMPACT_EFFORT = "medium"
 
 # Allowed tools when the sub-agent runs. Memory primitives only — no
 # Read/Write/Bash, no network. The sub-agent's job is graph navigation,
@@ -260,6 +272,7 @@ async def run_subagent(
     user_message: str,
     store: Store,
     model: str = DEFAULT_MODEL,
+    effort: str = DEFAULT_EFFORT,
     allowed_tools: tuple[str, ...] = DEFAULT_TOOL_NAMES,
 ) -> str:
     """Run the memory sub-agent for `task` and return its final text.
@@ -267,6 +280,10 @@ async def run_subagent(
     `task` selects the prompt template (`remember`, `retrieve`, `compact`).
     The sub-agent gets in-process tools over `store` and a system prompt
     composed from base + task + operator-context.
+
+    `effort` is the Agent SDK's thinking budget (low|medium|high|xhigh|max).
+    Default is "low" — memory ops are mostly mechanical and don't benefit
+    much from extended thinking; compact bumps to "medium".
     """
     from claude_agent_sdk import (  # local import: SDK is optional
         AssistantMessage,
@@ -279,6 +296,7 @@ async def run_subagent(
     server = create_sdk_mcp_server(name="memory", tools=build_sdk_tools(store))
     options = ClaudeAgentOptions(
         model=model,
+        effort=effort,
         system_prompt=system_prompt,
         mcp_servers={"memory": server},
         allowed_tools=[f"mcp__memory__{name}" for name in allowed_tools],
