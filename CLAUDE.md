@@ -32,6 +32,11 @@ source ~/.bashrc
 pipx install -e /home/benet/code/memory-module-mcp
 # Verify:
 which memory-graph
+
+# If you pipx-installed before 2026-05-19, claude-agent-sdk was an
+# optional extra and is now required. Inject it once:
+pipx inject memory-graph-mcp claude-agent-sdk
+# (or simply: pipx reinstall memory-graph-mcp)
 ```
 
 ### Per new project — five commands

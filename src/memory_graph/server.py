@@ -196,6 +196,10 @@ try:
 
     _AGENT_SDK_AVAILABLE = True
 except ImportError:
+    # claude-agent-sdk is a required dep — this branch only triggers if the
+    # install is broken (e.g. an old pipx install that predates the move from
+    # `[agent]` extra to required). Run `pipx inject memory-graph-mcp
+    # claude-agent-sdk` (or reinstall) to recover.
     _AGENT_SDK_AVAILABLE = False
 
 
@@ -250,8 +254,10 @@ def memory_compact(scope: str | None = None) -> dict[str, Any]:
 def _sdk_missing(tool: str) -> dict[str, Any]:
     return {
         "error": (
-            f"`{tool}` requires the claude-agent-sdk dependency. "
-            "Install it with `pip install memory-graph-mcp[agent]`."
+            f"`{tool}` requires the claude-agent-sdk package, which is "
+            "missing from the environment running this MCP server. "
+            "Fix: `pipx inject memory-graph-mcp claude-agent-sdk` "
+            "(or reinstall: `pipx reinstall memory-graph-mcp`)."
         )
     }
 
