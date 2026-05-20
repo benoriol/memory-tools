@@ -16,11 +16,18 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
-               font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
-  #app { display: grid; grid-template-columns: 280px 1fr 380px; height: 100vh; }
-  .col { overflow: auto; border-right: 1px solid var(--border); }
+               font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+               overflow: hidden; }
+  /* Explicit single row + grid items allowed to shrink below content size,
+     so the central #network cell gets the full viewport height instead of
+     collapsing to whatever the side panels happen to contain. */
+  #app { display: grid; grid-template-columns: 280px 1fr 380px;
+         grid-template-rows: 100vh; height: 100vh; }
+  .col { overflow: auto; border-right: 1px solid var(--border);
+         min-width: 0; min-height: 0; }
   .col:last-child { border-right: 0; border-left: 1px solid var(--border); }
-  #network { background: #0b0d11; }
+  #network { background: #0b0d11; min-width: 0; min-height: 0;
+             width: 100%; height: 100%; }
   h1, h2, h3 { font-weight: 600; }
   h1 { font-size: 14px; margin: 16px; letter-spacing: 0.04em; text-transform: uppercase;
        color: var(--muted); }

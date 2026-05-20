@@ -126,6 +126,11 @@ def test_http_root_serves_html(populated_store):
         assert "<title>memory-graph viewer</title>" in text
         # vis-network from the CDN — confirms we serve the real template.
         assert "vis-network" in text
+        # Regression: the grid must have an explicit row size, otherwise the
+        # #network cell collapses to the height of the side panels' content
+        # and vis-network renders into a tiny strip the user can miss.
+        assert "grid-template-rows" in text
+        assert "#network" in text and "height: 100%" in text
     finally:
         httpd.shutdown()
         httpd.server_close()
