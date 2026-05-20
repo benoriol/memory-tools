@@ -56,10 +56,12 @@ memory-graph init
 #   config.yml, and an internal .gitignore.
 
 # 3. Append the memory protocol to the project's CLAUDE.md
-echo "" >> CLAUDE.md
-cat /home/benet/code/memory-module-mcp/docs/CLAUDE.md.template >> CLAUDE.md
-#   Then edit CLAUDE.md to customize the "when to retrieve/remember"
-#   triggers for this project's load-bearing paths and workflows.
+memory-graph install-claude-md
+#   Picks up ./CLAUDE.md (or ./.claude/CLAUDE.md as fallback), wraps the
+#   inserted block in sentinel comments, refuses to clobber existing
+#   custom edits without --force, and is idempotent on re-runs. Edit
+#   inside the sentinels to customize triggers per project.
+#   Companion: `memory-graph uninstall-claude-md` removes it cleanly.
 
 # 4. (Optional) Stop-hook for auto-digest at session end
 mkdir -p .claude

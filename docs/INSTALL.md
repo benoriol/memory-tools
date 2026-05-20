@@ -112,9 +112,28 @@ add `.memory-graph/` to the project root's `.gitignore`.
 
 ## 5. Wire the memory protocol into the project's CLAUDE.md
 
-Copy [`docs/CLAUDE.md.template`](./CLAUDE.md.template) into the
-project's `CLAUDE.md` (or `.claude/CLAUDE.md`). Tweak the risky-path
-list to match your project.
+```bash
+memory-graph install-claude-md
+```
+
+That appends the bundled memory protocol — wrapped in HTML-comment
+sentinels — to `./CLAUDE.md` (or `./.claude/CLAUDE.md` as fallback).
+It's idempotent: re-running on an already-installed file is a no-op.
+If your project doesn't have a `CLAUDE.md` yet, pass `--create` to
+start a new one.
+
+Edit inside the sentinels to customize per project — the install
+command refuses to overwrite your edits unless you pass `--force`.
+
+To remove the section later:
+
+```bash
+memory-graph uninstall-claude-md
+```
+
+The block at [`docs/CLAUDE.md.template`](./CLAUDE.md.template) is the
+same content, kept here for reference; the source of truth lives in
+the package at `src/memory_graph/templates/claude_protocol.md`.
 
 ## Optional: Stop hook for automatic end-of-session digest
 

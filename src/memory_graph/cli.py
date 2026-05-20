@@ -232,6 +232,68 @@ def cmd_viz(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_install_claude_md(args: argparse.Namespace) -> int:
+    """Append (or update) the memory protocol section in a project's CLAUDE.md."""
+    from memory_graph import claude_md
+
+    project = Path(args.path).resolve()
+    if args.target:
+        target = Path(args.target)
+        if not target.is_absolute():
+            target = project / target
+    else:
+        found = claude_md.find_target(project)
+        if found is None:
+            # Default to ./CLAUDE.md and create it if --create is passed.
+            target = project / "CLAUDE.md"
+            if not args.create:
+                print(
+                    f"no CLAUDE.md found at or under {project}. "
+                    "Pass --create to start a new one, or --target PATH "
+                    "to point at a specific file.",
+                    file=sys.stderr,
+                )
+                return 1
+        else:
+            target = found
+
+    if not target.exists() and not args.create:
+        print(
+            f"{target} does not exist. Pass --create to start a new file.",
+            file=sys.stderr,
+        )
+        return 1
+    if not target.exists() and args.create:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("", encoding="utf-8")
+
+    status, message = claude_md.install(target, force=args.force)
+    if status == "stale":
+        print(message, file=sys.stderr)
+        return 2
+    print(message)
+    return 0
+
+
+def cmd_uninstall_claude_md(args: argparse.Namespace) -> int:
+    """Remove the memory protocol section from a project's CLAUDE.md."""
+    from memory_graph import claude_md
+
+    project = Path(args.path).resolve()
+    target = (
+        Path(args.target)
+        if args.target and Path(args.target).is_absolute()
+        else (project / args.target if args.target else (claude_md.find_target(project) or project / "CLAUDE.md"))
+    )
+
+    status, message = claude_md.uninstall(target)
+    if status in ("missing", "absent"):
+        print(message, file=sys.stderr)
+        return 0 if status == "absent" else 1
+    print(message)
+    return 0
+
+
 def cmd_unregister(args: argparse.Namespace) -> int:
     """Remove this tool's entry from .mcp.json or ~/.claude.json."""
     if args.scope == "user":
@@ -408,6 +470,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="don't auto-open the browser",
     )
     p_viz.set_defaults(func=cmd_viz)
+
+    p_cmd = sub.add_parser(
+        "install-claude-md",
+        help="append (or update) the memory protocol section in a project's CLAUDE.md",
+    )
+    p_cmd.add_argument("--path", default=".", help="project root (default: cwd)")
+    p_cmd.add_argument(
+        "--target",
+        default=None,
+        help="path to the file to update (default: CLAUDE.md in --path, or "
+        ".claude/CLAUDE.md as fallback)",
+    )
+    p_cmd.add_argument(
+        "--force",
+        action="store_true",
+        help="if a memory protocol section already exists but differs from the "
+        "bundled template, replace it. Without --force, that case is reported "
+        "and no changes are made.",
+    )
+    p_cmd.add_argument(
+        "--create",
+        action="store_true",
+        help="create the target file if it doesn't exist (instead of erroring)",
+    )
+    p_cmd.set_defaults(func=cmd_install_claude_md)
+
+    p_uninst = sub.add_parser(
+        "uninstall-claude-md",
+        help="remove the memory protocol section from a project's CLAUDE.md",
+    )
+    p_uninst.add_argument("--path", default=".")
+    p_uninst.add_argument("--target", default=None)
+    p_uninst.set_defaults(func=cmd_uninstall_claude_md)
 
     return parser
 

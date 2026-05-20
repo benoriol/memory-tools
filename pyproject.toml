@@ -34,7 +34,12 @@ memory-graph = "memory_graph.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"memory_graph" = ["storage/schema.sql", "prompts/*.md", "viz/static/*.html"]
+"memory_graph" = [
+    "storage/schema.sql",
+    "prompts/*.md",
+    "viz/static/*.html",
+    "templates/*.md",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
