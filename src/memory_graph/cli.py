@@ -80,7 +80,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
 
     store = _open_store_or_die()
     try:
-        from memory_graph.orchestration import remember
+        from memory_graph.orchestration import remember_sync
     except ImportError:
         print(
             "claude-agent-sdk is not installed; install with "
@@ -88,7 +88,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 3
-    synthesis = remember(transcript, store=store)
+    synthesis = remember_sync(transcript, store=store)
     print(synthesis)
     return 0
 
@@ -98,8 +98,16 @@ def cmd_reindex(args: argparse.Namespace) -> int:
 
     Used after manual edits, a `git pull` that changed `notes/`, or a
     schema bump.
+
+    Three passes so foreign-key constraints don't bite when an edge
+    references a node that sorts later than its source:
+      1. Insert every node (without its outgoing edges) plus its tags
+         and anchors.
+      2. Insert every edge.
+      3. Re-embed each note (skipped with --no-embed).
     """
     from memory_graph.embed import LocalEmbedder
+    from memory_graph.embed.base import build_embed_input
     from memory_graph.primitives import Store
     from memory_graph.storage import read_note
 
@@ -113,22 +121,31 @@ def cmd_reindex(args: argparse.Namespace) -> int:
         return 1
 
     embedder = LocalEmbedder() if not args.no_embed else _NullEmbedder()
-    n = 0
-    with Store(root, embedder=embedder) as s:
-        for md in sorted(notes_dir.glob("*.md")):
-            note = read_note(md)
-            # Re-insert from scratch; capture() will mint a new
-            # created_at, so we use the underlying insert helper instead.
-            s._insert_node(note)
-            # Re-embed unless --no-embed.
-            if not args.no_embed:
-                from memory_graph.embed.base import build_embed_input
+    notes = [read_note(md) for md in sorted(notes_dir.glob("*.md"))]
 
+    with Store(root, embedder=embedder) as s:
+        # Pass 1: nodes (and tags + anchors), no edges yet.
+        for note in notes:
+            saved_edges = list(note.edges)
+            note.edges = []
+            try:
+                s._insert_node(note)
+            finally:
+                note.edges = saved_edges
+
+        # Pass 2: edges. All target nodes now exist.
+        for note in notes:
+            for e in note.edges:
+                s.link(note.id, e.to_id, e.type, weight=e.weight)
+
+        # Pass 3: embeddings.
+        if not args.no_embed:
+            for note in notes:
                 text = build_embed_input(note.title, note.summary, note.body)
                 vec = embedder.embed(text)
                 s._upsert_embedding(note.id, note.body_hash or "", vec)
-            n += 1
-    print(f"rebuilt {n} notes into {db_path}")
+
+    print(f"rebuilt {len(notes)} notes into {db_path}")
     return 0
 
 

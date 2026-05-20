@@ -106,6 +106,97 @@ def test_build_sdk_tools_search_returns_text_content(s: Store):
     assert "alpha bravo" in blocks[0]["text"] or "id" in blocks[0]["text"]
 
 
+# -- async-from-event-loop regression ---------------------------------------
+
+
+def test_orchestration_tools_are_awaitable_from_running_loop(s: Store, monkeypatch):
+    """Regression: FastMCP runs tool handlers inside its event loop, so the
+    orchestration helpers must be async (or already in a thread). A previous
+    version used asyncio.run() inside the tool, which crashed with
+    'asyncio.run() cannot be called from a running event loop'.
+    """
+    import asyncio
+
+    # Stub the actual sub-agent runner. The orchestration modules import
+    # `run_subagent` by name, so we patch each module's local reference.
+    #
+    # Caveat: `memory_graph.orchestration` re-exports the function
+    # `remember` (etc.), which shadows the same-named submodule on
+    # attribute lookup, defeating `import ... as`. Grab the module via
+    # sys.modules instead.
+    import sys
+
+    import memory_graph.orchestration.compact  # ensure submodule loaded
+    import memory_graph.orchestration.remember  # noqa: F401
+    import memory_graph.orchestration.retrieve  # noqa: F401
+
+    submods = [
+        sys.modules[f"memory_graph.orchestration.{n}"]
+        for n in ("remember", "retrieve", "compact")
+    ]
+
+    async def fake_run_subagent(**kwargs):
+        return f"stub synthesis for task={kwargs.get('task')}"
+
+    for mod in submods:
+        monkeypatch.setattr(mod, "run_subagent", fake_run_subagent)
+
+    from memory_graph.orchestration import compact, remember, retrieve
+
+    async def exercise():
+        # All three orchestration helpers must be awaitable; awaiting them
+        # inside a running loop must not raise.
+        r1 = await remember("anything", store=s)
+        r2 = await retrieve("anything", store=s)
+        r3 = await compact(s, scope="recent")
+        return r1, r2, r3
+
+    r1, r2, r3 = asyncio.run(exercise())
+    assert "remember" in r1
+    assert "retrieve" in r2
+    assert "compact" in r3
+
+
+def test_server_tools_awaitable_from_running_loop(monkeypatch, tmp_path):
+    """Regression: the MCP server's three smart tools must be coroutines so
+    FastMCP can await them.
+    """
+    import asyncio
+
+    from memory_graph import server as srv
+    from memory_graph.embed import FakeEmbedder
+
+    # Reset and inject FakeEmbedder so we don't load the real model.
+    root = tmp_path / ".memory-graph"
+    root.mkdir()
+    monkeypatch.setenv("MEMORY_GRAPH_ROOT", str(root))
+    srv._store = None
+    srv._store_root = None
+    monkeypatch.setattr(srv, "_make_embedder", lambda: FakeEmbedder(dim=32))
+
+    # Stub the runner where it's used — see the comment in the previous test
+    # about the submodule-vs-re-export shadowing.
+    import sys
+
+    import memory_graph.orchestration.remember  # noqa: F401
+
+    remember_mod = sys.modules["memory_graph.orchestration.remember"]
+
+    async def fake_run_subagent(**kwargs):
+        return "ack"
+
+    monkeypatch.setattr(remember_mod, "run_subagent", fake_run_subagent)
+
+    async def exercise():
+        # @mcp.tool() leaves the original function in the module namespace
+        # (the Tool object lives inside the registry, not as a `.fn` attr).
+        return await srv.memory_remember(dump="some session dump")
+
+    result = asyncio.run(exercise())
+    assert isinstance(result, dict)
+    assert result.get("synthesis") == "ack"
+
+
 # -- end-to-end (opt-in) ----------------------------------------------------
 
 
@@ -114,9 +205,9 @@ def test_build_sdk_tools_search_returns_text_content(s: Store):
     reason="set CLAUDE_CODE_OAUTH_TOKEN to run a real sub-agent end-to-end",
 )
 def test_remember_end_to_end(s: Store):
-    from memory_graph.orchestration import remember
+    from memory_graph.orchestration import remember_sync
 
-    result = remember(
+    result = remember_sync(
         "Today we tried cursor-based pagination on /ingest and it cut "
         "p95 latency from 800ms to 90ms at 5k req/s. We decided to keep "
         "it for new endpoints.",

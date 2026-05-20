@@ -204,7 +204,7 @@ except ImportError:
 
 
 @mcp.tool()
-def memory_remember(dump: str) -> dict[str, Any]:
+async def memory_remember(dump: str) -> dict[str, Any]:
     """Decompose a free-form session summary into memory notes.
 
     Pass a thorough description of what happened (experiments, decisions,
@@ -216,12 +216,12 @@ def memory_remember(dump: str) -> dict[str, Any]:
         return _sdk_missing("remember")
     from memory_graph.orchestration import remember as _remember
 
-    synthesis = _remember(dump, store=get_store())
+    synthesis = await _remember(dump, store=get_store())
     return {"synthesis": synthesis}
 
 
 @mcp.tool()
-def memory_retrieve(query: str, intent: str = "decide") -> dict[str, Any]:
+async def memory_retrieve(query: str, intent: str = "decide") -> dict[str, Any]:
     """Surface relevant memories with citations.
 
     Describe what you're working on or about to decide. `intent` is
@@ -232,12 +232,12 @@ def memory_retrieve(query: str, intent: str = "decide") -> dict[str, Any]:
         return _sdk_missing("retrieve")
     from memory_graph.orchestration import retrieve as _retrieve
 
-    synthesis = _retrieve(query, store=get_store(), intent=intent)
+    synthesis = await _retrieve(query, store=get_store(), intent=intent)
     return {"synthesis": synthesis}
 
 
 @mcp.tool()
-def memory_compact(scope: str | None = None) -> dict[str, Any]:
+async def memory_compact(scope: str | None = None) -> dict[str, Any]:
     """Run a consolidation pass (merges, hubs, supersessions) over a region.
 
     `scope` is "cluster:X", "topic:Y", "recent", or None (sub-agent
@@ -247,7 +247,7 @@ def memory_compact(scope: str | None = None) -> dict[str, Any]:
         return _sdk_missing("compact")
     from memory_graph.orchestration import compact as _compact
 
-    synthesis = _compact(get_store(), scope=scope)
+    synthesis = await _compact(get_store(), scope=scope)
     return {"synthesis": synthesis}
 
 

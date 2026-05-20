@@ -239,7 +239,12 @@ async def run_subagent(
 
 
 def run_subagent_sync(**kwargs: Any) -> str:
-    """Synchronous wrapper. The MCP server is sync; the SDK is async."""
+    """Synchronous wrapper for callers NOT already inside an event loop.
+
+    The MCP server's tools run inside FastMCP's event loop, so they must
+    `await run_subagent(...)` directly. This wrapper is only safe for
+    truly sync contexts — the CLI digest command, mostly.
+    """
     return asyncio.run(run_subagent(**kwargs))
 
 
