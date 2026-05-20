@@ -131,6 +131,13 @@ def test_http_root_serves_html(populated_store):
         # and vis-network renders into a tiny strip the user can miss.
         assert "grid-template-rows" in text
         assert "#network" in text and "height: 100%" in text
+        # List view (graph/list toggle) is part of the served UI.
+        assert 'id="view-toggle"' in text
+        assert 'id="list"' in text
+        assert 'data-view="graph"' in text
+        assert 'data-view="list"' in text
+        assert "function renderList" in text
+        assert "function selectNote" in text
     finally:
         httpd.shutdown()
         httpd.server_close()

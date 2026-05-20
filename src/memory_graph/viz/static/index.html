@@ -59,6 +59,47 @@
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
   .id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+
+  /* Center column = view toggle + graph OR list. Class on #main switches. */
+  #main { display: flex; flex-direction: column; min-width: 0; min-height: 0;
+          background: #0b0d11; }
+  #view-toggle { flex: 0 0 auto; display: flex; gap: 6px; padding: 8px 12px;
+                 border-bottom: 1px solid var(--border); }
+  #view-toggle button { background: transparent; color: var(--muted);
+                        border: 1px solid var(--border); border-radius: 4px;
+                        padding: 4px 12px; font: inherit; font-size: 12px;
+                        cursor: pointer; }
+  #view-toggle button:hover { color: var(--text); border-color: var(--muted); }
+  #view-toggle button.active { background: var(--accent); color: #0b0d11;
+                               border-color: var(--accent); }
+  #view-toggle .count { color: var(--muted); margin-left: auto;
+                        font-size: 12px; align-self: center; }
+  #network, #list { flex: 1 1 auto; min-width: 0; min-height: 0; }
+  #list { overflow: auto; padding: 6px 0; }
+  #main.view-graph #list    { display: none; }
+  #main.view-list  #network { display: none; }
+
+  /* List rows */
+  .row { padding: 10px 14px; border-bottom: 1px solid var(--border);
+         cursor: pointer; }
+  .row:hover { background: var(--panel); }
+  .row.selected { background: var(--panel-2); border-left: 3px solid var(--accent);
+                  padding-left: 11px; }
+  .row .head { display: flex; gap: 8px; align-items: baseline;
+               margin-bottom: 2px; }
+  .row .kind-dot { width: 10px; height: 10px; border-radius: 50%;
+                   flex: 0 0 auto; margin-top: 5px; }
+  .row .title { font-weight: 600; flex: 1 1 auto;
+                white-space: nowrap; overflow: hidden;
+                text-overflow: ellipsis; min-width: 0; }
+  .row .meta { color: var(--muted); font-size: 11px; flex: 0 0 auto; }
+  .row .sum { color: var(--muted); font-size: 12px; line-height: 1.4;
+              margin-left: 18px;
+              display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+              overflow: hidden; }
+  .row .status-tag { font-size: 10px; padding: 1px 5px;
+                     border-radius: 3px; background: var(--panel-2);
+                     color: var(--muted); margin-left: 4px; }
 </style>
 </head>
 <body>
@@ -79,7 +120,15 @@
     <input class="search" id="search" placeholder="title or summary…" />
   </div>
 
-  <div id="network"></div>
+  <div id="main" class="view-graph">
+    <div id="view-toggle">
+      <button class="active" data-view="graph">Graph</button>
+      <button data-view="list">List</button>
+      <span class="count" id="view-count"></span>
+    </div>
+    <div id="network"></div>
+    <div id="list"></div>
+  </div>
 
   <div class="col" id="right">
     <h1>note</h1>
@@ -148,6 +197,7 @@ let network = null;
 let kindEnabled = new Set();
 let statusEnabled = new Set();
 let searchQ = "";
+let selectedId = null; // currently selected note (highlighted in list + graph)
 
 // ---- fetch + render ------------------------------------------------------
 
@@ -223,6 +273,20 @@ document.getElementById("search").addEventListener("input", e => {
   applyFilter();
 });
 
+// View toggle (graph <-> list)
+document.querySelectorAll("#view-toggle button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const view = btn.dataset.view;
+    document.querySelectorAll("#view-toggle button")
+      .forEach(b => b.classList.toggle("active", b === btn));
+    const main = document.getElementById("main");
+    main.classList.toggle("view-graph", view === "graph");
+    main.classList.toggle("view-list", view === "list");
+    // vis-network can mis-render after being hidden then shown — nudge it.
+    if (view === "graph" && network) network.redraw();
+  });
+});
+
 function buildNetwork() {
   const container = document.getElementById("network");
   nodesDS = new vis.DataSet([]);
@@ -249,7 +313,7 @@ function buildNetwork() {
   });
   network.on("click", params => {
     if (params.nodes && params.nodes.length) {
-      loadNote(params.nodes[0]);
+      selectNote(params.nodes[0]);
     }
   });
 }
@@ -265,17 +329,15 @@ function applyFilter() {
     )) return false;
     return true;
   };
-  const visibleIds = new Set();
-  const nextNodes = G.nodes.filter(matches).map(n => {
-    visibleIds.add(n.id);
-    return {
-      id: n.id,
-      label: shortLabel(n.title || n.id),
-      title: tooltipFor(n),
-      color: KIND_COLORS[n.kind] || DEFAULT_COLOR,
-      font: { color: STATUS_FONT[n.status] || "#d7dae0" },
-    };
-  });
+  const visibleNodes = G.nodes.filter(matches);
+  const visibleIds = new Set(visibleNodes.map(n => n.id));
+  const nextNodes = visibleNodes.map(n => ({
+    id: n.id,
+    label: shortLabel(n.title || n.id),
+    title: tooltipFor(n),
+    color: KIND_COLORS[n.kind] || DEFAULT_COLOR,
+    font: { color: STATUS_FONT[n.status] || "#d7dae0" },
+  }));
   const nextEdges = G.edges
     .filter(e => visibleIds.has(e.from) && visibleIds.has(e.to))
     .map((e, i) => ({
@@ -287,6 +349,60 @@ function applyFilter() {
     }));
   nodesDS.clear(); nodesDS.add(nextNodes);
   edgesDS.clear(); edgesDS.add(nextEdges);
+  renderList(visibleNodes);
+  document.getElementById("view-count").textContent =
+    `${visibleNodes.length} / ${G.nodes.length}`;
+}
+
+function renderList(nodes) {
+  // Sort: most-recently-updated first, ties broken by id (newer ULID wins).
+  const sorted = nodes.slice().sort((a, b) => {
+    const ua = a.updated_at || a.created_at || 0;
+    const ub = b.updated_at || b.created_at || 0;
+    if (ua !== ub) return ub - ua;
+    return (b.id || "").localeCompare(a.id || "");
+  });
+  const el = document.getElementById("list");
+  if (!sorted.length) {
+    el.innerHTML = `<div class="empty">no notes match the current filters.</div>`;
+    return;
+  }
+  el.innerHTML = sorted.map(n => {
+    const color = KIND_COLORS[n.kind] || DEFAULT_COLOR;
+    const date = n.updated_at
+      ? new Date(n.updated_at).toISOString().slice(0, 10)
+      : "";
+    const selected = n.id === selectedId ? " selected" : "";
+    return `
+      <div class="row${selected}" data-id="${esc(n.id)}">
+        <div class="head">
+          <span class="kind-dot" style="background:${color}"></span>
+          <span class="title">${esc(n.title || n.id)}</span>
+          <span class="meta">${esc(n.kind)}
+            ${n.status && n.status !== "active"
+              ? `<span class="status-tag">${esc(n.status)}</span>` : ""}
+            ${date ? ` · ${esc(date)}` : ""}</span>
+        </div>
+        <div class="sum">${esc(n.summary || "")}</div>
+      </div>`;
+  }).join("");
+  el.querySelectorAll(".row").forEach(row => {
+    row.addEventListener("click", () => {
+      selectNote(row.dataset.id);
+    });
+  });
+}
+
+function selectNote(id) {
+  selectedId = id;
+  // Highlight in list.
+  document.querySelectorAll("#list .row").forEach(r =>
+    r.classList.toggle("selected", r.dataset.id === id));
+  // Highlight in graph (if visible there).
+  if (network && nodesDS.get(id)) {
+    network.selectNodes([id]);
+  }
+  loadNote(id);
 }
 
 function shortLabel(s) {
@@ -356,10 +472,9 @@ function renderDetails(n) {
     a.addEventListener("click", ev => {
       ev.preventDefault();
       const id = a.dataset.id;
-      loadNote(id);
+      selectNote(id);
       if (network && nodesDS.get(id)) {
         network.focus(id, { scale: 1.2, animation: true });
-        network.selectNodes([id]);
       }
     });
   });
