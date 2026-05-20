@@ -22,16 +22,18 @@ from memory_graph.storage import Edge
 
 # Sub-agent model selection.
 #
-# remember / retrieve are mostly mechanical decomposition / search; Haiku
-# at low thinking-effort handles them in a fraction of the time and cost
-# of Sonnet. compact is heavier (cross-cluster reasoning) and warrants
-# Opus at medium effort.
+# remember / retrieve land on Sonnet at low effort. Haiku was tempting
+# for speed but ignored the dup-flag → supersede flow in practice
+# (wrote duplicates instead of acknowledging them). Sonnet-low is
+# noticeably more attentive to multi-step instructions and still
+# substantially faster than Sonnet at default effort. compact stays on
+# Opus at medium — cross-cluster reasoning warrants both.
 #
 # `effort` is the Agent SDK's extended-thinking budget knob:
 #   "low"    — minimal thinking, fastest
 #   "medium" — balanced (default for agentic tasks if unspecified)
 #   "high" / "xhigh" / "max" — progressively more thinking
-DEFAULT_MODEL  = "claude-haiku-4-5-20251001"
+DEFAULT_MODEL  = "claude-sonnet-4-6"
 DEFAULT_EFFORT = "low"
 
 COMPACT_MODEL  = "claude-opus-4-7"
