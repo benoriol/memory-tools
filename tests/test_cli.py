@@ -148,13 +148,37 @@ def test_digest_skips_empty_transcript(tmp_path: Path, capsys, monkeypatch):
 # -- register / unregister --------------------------------------------------
 
 
-def test_register_writes_project_mcp_json(tmp_path: Path, monkeypatch, capsys):
-    # Pretend a memory-graph binary exists somewhere reachable.
+def test_register_writes_project_mcp_json_without_env_by_default(
+    tmp_path: Path, monkeypatch, capsys
+):
+    """Default behavior: no env block in .mcp.json — the MCP server inherits
+    auth from the parent (typically subscription OAuth from `claude /login`)."""
     fake_bin = tmp_path / "bin" / "memory-graph"
     fake_bin.parent.mkdir()
     fake_bin.write_text("#!/bin/sh\necho hi\n")
     fake_bin.chmod(0o755)
+    # Make sure the env var doesn't leak in.
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
 
+    code = cli_main([
+        "register",
+        "--path", str(tmp_path),
+        "--binary", str(fake_bin),
+    ])
+    assert code == 0
+    data = json.loads((tmp_path / ".mcp.json").read_text())
+    entry = data["mcpServers"]["memory-graph"]
+    assert entry["command"] == str(fake_bin.resolve())
+    assert entry["args"] == ["serve"]
+    # No env block at all — important: a baked empty token would override
+    # the inherited token and break auth.
+    assert "env" not in entry, "default register must not write an env block"
+
+
+def test_register_with_token_arg_embeds_it(tmp_path: Path, monkeypatch):
+    fake_bin = tmp_path / "memory-graph"
+    fake_bin.write_text("#!/bin/sh\n")
+    fake_bin.chmod(0o755)
     code = cli_main([
         "register",
         "--path", str(tmp_path),
@@ -162,15 +186,43 @@ def test_register_writes_project_mcp_json(tmp_path: Path, monkeypatch, capsys):
         "--binary", str(fake_bin),
     ])
     assert code == 0
-    mcp_json = tmp_path / ".mcp.json"
-    assert mcp_json.exists()
-    data = json.loads(mcp_json.read_text())
-    assert data["mcpServers"]["memory-graph"]["command"] == str(fake_bin.resolve())
-    assert data["mcpServers"]["memory-graph"]["args"] == ["serve"]
-    assert (
-        data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"]
-        == "FAKE_TOKEN"
-    )
+    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
+    assert entry["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "FAKE_TOKEN"
+
+
+def test_register_bake_token_pulls_from_env(tmp_path: Path, monkeypatch):
+    fake_bin = tmp_path / "memory-graph"
+    fake_bin.write_text("#!/bin/sh\n")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "ENV_TOKEN")
+    code = cli_main([
+        "register",
+        "--path", str(tmp_path),
+        "--bake-token",
+        "--binary", str(fake_bin),
+    ])
+    assert code == 0
+    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
+    assert entry["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "ENV_TOKEN"
+
+
+def test_register_bake_token_without_env_warns(tmp_path: Path, monkeypatch, capsys):
+    fake_bin = tmp_path / "memory-graph"
+    fake_bin.write_text("#!/bin/sh\n")
+    fake_bin.chmod(0o755)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    code = cli_main([
+        "register",
+        "--path", str(tmp_path),
+        "--bake-token",
+        "--binary", str(fake_bin),
+    ])
+    assert code == 0
+    err = capsys.readouterr().err.lower()
+    assert "warning" in err and "no token found" in err
+    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
+    # Empty token written so the user can fill in (or re-run without --bake-token).
+    assert entry["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == ""
 
 
 def test_register_refuses_overwrite_without_force(tmp_path, capsys):
@@ -178,14 +230,10 @@ def test_register_refuses_overwrite_without_force(tmp_path, capsys):
     fake_bin.write_text("#!/bin/sh\n")
     fake_bin.chmod(0o755)
     # First call seeds the entry.
-    cli_main([
-        "register", "--path", str(tmp_path), "--token", "A", "--binary", str(fake_bin),
-    ])
+    cli_main(["register", "--path", str(tmp_path), "--binary", str(fake_bin)])
     capsys.readouterr()
     # Second call should refuse without --force.
-    code = cli_main([
-        "register", "--path", str(tmp_path), "--token", "B", "--binary", str(fake_bin),
-    ])
+    code = cli_main(["register", "--path", str(tmp_path), "--binary", str(fake_bin)])
     assert code == 1
     err = capsys.readouterr().err
     assert "already registered" in err
@@ -208,6 +256,29 @@ def test_register_force_overwrites(tmp_path, capsys):
     assert data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "B"
 
 
+def test_register_force_can_remove_existing_env_block(tmp_path, capsys):
+    """Re-registering with no token + --force should produce a CLEAN entry
+    (no env block), matching the new default behavior. This is how a user
+    upgrades an old token-baked entry to subscription-OAuth-based auth."""
+    fake_bin = tmp_path / "memory-graph"
+    fake_bin.write_text("#!/bin/sh\n")
+    fake_bin.chmod(0o755)
+    # Seed with an old-style token-baked entry.
+    cli_main([
+        "register", "--path", str(tmp_path),
+        "--token", "OLD_TOKEN", "--binary", str(fake_bin),
+    ])
+    capsys.readouterr()
+    # Re-register without --token and without --bake-token → no env block.
+    code = cli_main([
+        "register", "--path", str(tmp_path),
+        "--binary", str(fake_bin), "--force",
+    ])
+    assert code == 0
+    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
+    assert "env" not in entry
+
+
 def test_register_merges_into_existing_mcp_json(tmp_path, capsys):
     # Pre-existing .mcp.json with another server.
     existing = {"mcpServers": {"other-tool": {"command": "other", "args": []}}}
@@ -226,7 +297,9 @@ def test_register_merges_into_existing_mcp_json(tmp_path, capsys):
     assert "other-tool" in data["mcpServers"]
 
 
-def test_register_warns_on_empty_token(tmp_path, capsys, monkeypatch):
+def test_register_no_token_no_env_block_no_warning(tmp_path, capsys, monkeypatch):
+    """The new default: omitting --token / --bake-token produces a clean
+    entry with no env block, and no warning (rely on `claude /login`)."""
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     fake_bin = tmp_path / "memory-graph"
     fake_bin.write_text("#!/bin/sh\n")
@@ -235,11 +308,11 @@ def test_register_warns_on_empty_token(tmp_path, capsys, monkeypatch):
         "register", "--path", str(tmp_path), "--binary", str(fake_bin),
     ])
     assert code == 0
+    # No warning — the no-env-block path is the recommended default now.
     err = capsys.readouterr().err
-    assert "warning" in err.lower()
-    # Empty token written so user can fill in.
-    data = json.loads((tmp_path / ".mcp.json").read_text())
-    assert data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == ""
+    assert "warning" not in err.lower()
+    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
+    assert "env" not in entry
 
 
 def test_register_errors_when_binary_not_found(tmp_path, capsys, monkeypatch):
@@ -354,6 +427,21 @@ def test_setup_force_replaces_register_entry(tmp_path, capsys):
         data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"]
         == "NEW"
     )
+
+
+def test_setup_no_token_no_env_block_in_mcp_json(tmp_path, monkeypatch):
+    """Default setup with no token / no --bake-token produces a clean
+    .mcp.json — relies on subscription OAuth from `claude /login`."""
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    binary = _bin(tmp_path)
+    project = tmp_path / "proj"
+    project.mkdir()
+    code = cli_main([
+        "setup", "--path", str(project), "--binary", str(binary),
+    ])
+    assert code == 0
+    entry = json.loads((project / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
+    assert "env" not in entry
 
 
 def test_setup_skip_flags(tmp_path, capsys):

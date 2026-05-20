@@ -168,10 +168,18 @@ def cmd_register(args: argparse.Namespace) -> int:
 
     `--scope user`: merges into ~/.claude.json so every project does.
 
-    The OAuth token is taken from `--token` if given, otherwise from
-    $CLAUDE_CODE_OAUTH_TOKEN. If neither is set, we still write the
-    config (with an empty token value) and print a warning so you can
-    fill it in by hand.
+    By default the entry has NO `env` block — the MCP server subprocess
+    inherits whatever auth the parent Claude Code session has (typically
+    subscription OAuth from `claude /login`, written to
+    ~/.claude/.credentials.json).
+
+    Pass `--bake-token` to embed `CLAUDE_CODE_OAUTH_TOKEN` in the entry's
+    env block. That's useful for headless / CI / non-interactive setups
+    where there's no interactive login. The token is read from `--token`
+    or `$CLAUDE_CODE_OAUTH_TOKEN`. Note that the token from
+    `claude setup-token` is *inference-only* and cannot establish Remote
+    Control sessions, so leaving it out is the right default for
+    interactive use.
     """
     binary = _resolve_binary_path(args.binary)
     if binary is None:
@@ -182,13 +190,24 @@ def cmd_register(args: argparse.Namespace) -> int:
         )
         return 1
 
-    token = args.token or os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
-
-    entry = {
+    entry: dict[str, Any] = {
         "command": binary,
         "args": ["serve"],
-        "env": {"CLAUDE_CODE_OAUTH_TOKEN": token},
     }
+
+    if args.bake_token:
+        token = args.token or os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
+        entry["env"] = {"CLAUDE_CODE_OAUTH_TOKEN": token}
+        if not token:
+            print(
+                "warning: --bake-token given but no token found "
+                "(--token not passed and $CLAUDE_CODE_OAUTH_TOKEN unset). "
+                "Wrote an empty token; edit by hand or re-run with --token.",
+                file=sys.stderr,
+            )
+    elif args.token:
+        # Explicit --token implies the user wants it baked in.
+        entry["env"] = {"CLAUDE_CODE_OAUTH_TOKEN": args.token}
 
     if args.scope == "user":
         target = Path.home() / ".claude.json"
@@ -208,12 +227,11 @@ def cmd_register(args: argparse.Namespace) -> int:
     target.write_text(json.dumps(data, indent=2) + "\n")
 
     print(f"Registered `{args.name}` in {target}")
-    if not token:
+    if "env" not in entry:
         print(
-            "  warning: CLAUDE_CODE_OAUTH_TOKEN is empty. Run "
-            "`claude setup-token` to get one, then edit the file or "
-            "re-run with --token.",
-            file=sys.stderr,
+            "  (no token baked in — MCP server will use your "
+            "`claude /login` credentials. Pass --bake-token if you "
+            "need headless / CI auth.)"
         )
     return 0
 
@@ -293,6 +311,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
             path=str(project),
             name="memory-graph",
             token=args.token,
+            bake_token=args.bake_token,
             binary=args.binary,
             force=args.force,
         )
@@ -501,7 +520,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_register.add_argument(
         "--token",
         default=None,
-        help="CLAUDE_CODE_OAUTH_TOKEN value (default: read from env)",
+        help="CLAUDE_CODE_OAUTH_TOKEN value to embed (implies --bake-token). "
+        "Only needed for headless / CI auth — leave empty if you've run "
+        "`claude /login`.",
+    )
+    p_register.add_argument(
+        "--bake-token",
+        action="store_true",
+        help="bake $CLAUDE_CODE_OAUTH_TOKEN into the .mcp.json env block "
+        "(default off: rely on `claude /login` credentials). Useful for "
+        "headless / CI scenarios with no interactive login.",
     )
     p_register.add_argument(
         "--binary",
@@ -581,8 +609,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_setup.add_argument("--path", default=".", help="project root (default: cwd)")
     p_setup.add_argument(
         "--token", default=None,
-        help="CLAUDE_CODE_OAUTH_TOKEN to bake into .mcp.json "
-        "(default: read from $CLAUDE_CODE_OAUTH_TOKEN)",
+        help="CLAUDE_CODE_OAUTH_TOKEN to embed (implies --bake-token); "
+        "only needed for headless / CI.",
+    )
+    p_setup.add_argument(
+        "--bake-token", action="store_true",
+        help="bake $CLAUDE_CODE_OAUTH_TOKEN into .mcp.json (default off: "
+        "rely on `claude /login`).",
     )
     p_setup.add_argument(
         "--binary", default=None,
