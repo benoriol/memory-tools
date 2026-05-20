@@ -186,7 +186,7 @@ def test_memory_remember_includes_writes_delta(monkeypatch, tmp_path):
 
     # First subtest: sub-agent claims success but doesn't actually write.
     async def lying_sub_agent(**kwargs):
-        return "Wrote 9 notes successfully!"
+        return _fake_result("Wrote 9 notes successfully!")
 
     monkeypatch.setattr(remember_mod, "run_subagent", lying_sub_agent)
     result = asyncio.run(srv.memory_remember(dump="anything"))
@@ -220,7 +220,7 @@ def test_memory_remember_no_warning_when_writes_actually_happen(monkeypatch, tmp
     async def writing_sub_agent(**kwargs):
         store = kwargs["store"]
         store.capture(title="t", summary="s", body="b", kind="capture")
-        return "Wrote 1 note."
+        return _fake_result("Wrote 1 note.")
 
     monkeypatch.setattr(remember_mod, "run_subagent", writing_sub_agent)
     result = asyncio.run(srv.memory_remember(dump="anything"))
@@ -228,7 +228,53 @@ def test_memory_remember_no_warning_when_writes_actually_happen(monkeypatch, tmp
     assert "warning" not in result
 
 
+# -- SubAgentError surfaced via the MCP tool layer --------------------------
+
+
+def test_memory_remember_surfaces_subagent_error(monkeypatch, tmp_path):
+    """When the sub-agent reports is_error=True, run_subagent must raise a
+    SubAgentError; the MCP tool must catch that and return an `error` field
+    instead of pretending success with an empty synthesis."""
+    import asyncio
+    import sys
+
+    from memory_graph import server as srv
+    from memory_graph.embed import FakeEmbedder
+    from memory_graph.orchestration.runner import SubAgentError
+
+    root = tmp_path / ".memory-graph"
+    root.mkdir()
+    monkeypatch.setenv("MEMORY_GRAPH_ROOT", str(root))
+    srv._store = None
+    srv._store_root = None
+    monkeypatch.setattr(srv, "_make_embedder", lambda: FakeEmbedder(dim=32))
+
+    import memory_graph.orchestration.remember  # noqa: F401
+    remember_mod = sys.modules["memory_graph.orchestration.remember"]
+
+    async def failing_sub_agent(**kwargs):
+        raise SubAgentError(
+            "sub-agent failed (stop_reason='max_turns'): []",
+            stop_reason="max_turns",
+            errors=[],
+        )
+
+    monkeypatch.setattr(remember_mod, "run_subagent", failing_sub_agent)
+    result = asyncio.run(srv.memory_remember(dump="anything"))
+    assert "error" in result
+    assert "max_turns" in result["error"] or result["stop_reason"] == "max_turns"
+    assert "synthesis" not in result  # we don't pretend success
+
+
 # -- async-from-event-loop regression ---------------------------------------
+
+
+def _fake_result(text: str):
+    from memory_graph.orchestration.runner import SubAgentResult
+    return SubAgentResult(
+        text=text, usage={}, model_usage={},
+        total_cost_usd=0.0, stop_reason="end_turn",
+    )
 
 
 def test_orchestration_tools_are_awaitable_from_running_loop(s: Store, monkeypatch):
@@ -258,7 +304,7 @@ def test_orchestration_tools_are_awaitable_from_running_loop(s: Store, monkeypat
     ]
 
     async def fake_run_subagent(**kwargs):
-        return f"stub synthesis for task={kwargs.get('task')}"
+        return _fake_result(f"stub synthesis for task={kwargs.get('task')}")
 
     for mod in submods:
         monkeypatch.setattr(mod, "run_subagent", fake_run_subagent)
@@ -274,9 +320,9 @@ def test_orchestration_tools_are_awaitable_from_running_loop(s: Store, monkeypat
         return r1, r2, r3
 
     r1, r2, r3 = asyncio.run(exercise())
-    assert "remember" in r1
-    assert "retrieve" in r2
-    assert "compact" in r3
+    assert "remember" in r1.text
+    assert "retrieve" in r2.text
+    assert "compact" in r3.text
 
 
 def test_server_tools_awaitable_from_running_loop(monkeypatch, tmp_path):
@@ -305,7 +351,7 @@ def test_server_tools_awaitable_from_running_loop(monkeypatch, tmp_path):
     remember_mod = sys.modules["memory_graph.orchestration.remember"]
 
     async def fake_run_subagent(**kwargs):
-        return "ack"
+        return _fake_result("ack")
 
     monkeypatch.setattr(remember_mod, "run_subagent", fake_run_subagent)
 
@@ -317,6 +363,9 @@ def test_server_tools_awaitable_from_running_loop(monkeypatch, tmp_path):
     result = asyncio.run(exercise())
     assert isinstance(result, dict)
     assert result.get("synthesis") == "ack"
+    # New: response carries sub-agent observability data.
+    assert "sub_agent" in result
+    assert "tokens" in result["sub_agent"]
 
 
 # -- end-to-end (opt-in) ----------------------------------------------------
@@ -335,6 +384,6 @@ def test_remember_end_to_end(s: Store):
         "it for new endpoints.",
         store=s,
     )
-    assert isinstance(result, str) and len(result) > 0
-    # And at least one note should have landed.
+    assert hasattr(result, "text") and len(result.text) > 0
+    # At least one note should have landed.
     assert s.status()["total_nodes"] >= 1

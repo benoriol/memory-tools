@@ -225,6 +225,16 @@ def _diff_writes(before: dict[str, int], after: dict[str, int]) -> dict[str, int
     }
 
 
+def _sub_agent_meta(result) -> dict[str, Any]:
+    """Pull the cost/usage/stop-reason fields off a SubAgentResult."""
+    return {
+        "tokens": result.usage,
+        "model_usage": result.model_usage,
+        "cost_usd": result.total_cost_usd,
+        "stop_reason": result.stop_reason,
+    }
+
+
 @mcp.tool()
 async def memory_remember(dump: str) -> dict[str, Any]:
     """Decompose a free-form session summary into memory notes.
@@ -234,20 +244,35 @@ async def memory_remember(dump: str) -> dict[str, Any]:
     levels, finds connections in the existing graph, writes the notes,
     and supersedes any contradictions.
 
-    The response includes a `writes` summary (nodes_written,
-    edges_written, nodes_superseded) measured against the store before
-    and after the sub-agent ran — so the caller can detect when the
-    sub-agent's synthesis claims writes that didn't actually persist.
+    The response includes:
+      - `synthesis`: the sub-agent's prose summary
+      - `writes`: {nodes_written, edges_written, nodes_superseded} measured
+        against the store before and after — so the caller can detect when
+        the synthesis claims writes that didn't actually persist
+      - `sub_agent`: {tokens, model_usage, cost_usd, stop_reason} — sub-agent
+        observability so the caller can see what the call actually cost
     """
     if not _AGENT_SDK_AVAILABLE:
         return _sdk_missing("remember")
     from memory_graph.orchestration import remember as _remember
+    from memory_graph.orchestration.runner import SubAgentError
 
     store = get_store()
     before = _count_writes(store)
-    synthesis = await _remember(dump, store=store)
+    try:
+        sub_result = await _remember(dump, store=store)
+    except SubAgentError as exc:
+        return {
+            "error": str(exc),
+            "stop_reason": exc.stop_reason,
+            "errors": exc.errors,
+        }
     writes = _diff_writes(before, _count_writes(store))
-    result: dict[str, Any] = {"synthesis": synthesis, "writes": writes}
+    result: dict[str, Any] = {
+        "synthesis": sub_result.text,
+        "writes": writes,
+        "sub_agent": _sub_agent_meta(sub_result),
+    }
     if writes["nodes_written"] == 0 and writes["nodes_superseded"] == 0:
         # Empty deltas are sometimes legitimate (everything was a duplicate, the
         # dump was a clarification, etc.), but they're often the signature of a
@@ -267,14 +292,26 @@ async def memory_retrieve(query: str, intent: str = "decide") -> dict[str, Any]:
 
     Describe what you're working on or about to decide. `intent` is
     "decide", "explore", or "verify" and shapes which edge types the
-    sub-agent walks. Returns a focused synthesis with `[id]` citations.
+    sub-agent walks. Returns a focused synthesis with `[id]` citations
+    plus a `sub_agent` block reporting tokens / cost / stop_reason.
     """
     if not _AGENT_SDK_AVAILABLE:
         return _sdk_missing("retrieve")
     from memory_graph.orchestration import retrieve as _retrieve
+    from memory_graph.orchestration.runner import SubAgentError
 
-    synthesis = await _retrieve(query, store=get_store(), intent=intent)
-    return {"synthesis": synthesis}
+    try:
+        sub_result = await _retrieve(query, store=get_store(), intent=intent)
+    except SubAgentError as exc:
+        return {
+            "error": str(exc),
+            "stop_reason": exc.stop_reason,
+            "errors": exc.errors,
+        }
+    return {
+        "synthesis": sub_result.text,
+        "sub_agent": _sub_agent_meta(sub_result),
+    }
 
 
 @mcp.tool()
@@ -282,17 +319,30 @@ async def memory_compact(scope: str | None = None) -> dict[str, Any]:
     """Run a consolidation pass (merges, hubs, supersessions) over a region.
 
     `scope` is "cluster:X", "topic:Y", "recent", or None (sub-agent
-    picks). Returns a summary of changes made plus a `writes` delta.
+    picks). Returns a summary of changes made plus a `writes` delta and
+    a `sub_agent` cost/usage block.
     """
     if not _AGENT_SDK_AVAILABLE:
         return _sdk_missing("compact")
     from memory_graph.orchestration import compact as _compact
+    from memory_graph.orchestration.runner import SubAgentError
 
     store = get_store()
     before = _count_writes(store)
-    synthesis = await _compact(store, scope=scope)
+    try:
+        sub_result = await _compact(store, scope=scope)
+    except SubAgentError as exc:
+        return {
+            "error": str(exc),
+            "stop_reason": exc.stop_reason,
+            "errors": exc.errors,
+        }
     writes = _diff_writes(before, _count_writes(store))
-    return {"synthesis": synthesis, "writes": writes}
+    return {
+        "synthesis": sub_result.text,
+        "writes": writes,
+        "sub_agent": _sub_agent_meta(sub_result),
+    }
 
 
 def _sdk_missing(tool: str) -> dict[str, Any]:

@@ -88,8 +88,8 @@ def cmd_digest(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 3
-    synthesis = remember_sync(transcript, store=store)
-    print(synthesis)
+    sub_result = remember_sync(transcript, store=store)
+    print(sub_result.text)
     return 0
 
 

@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from memory_graph.orchestration.runner import run_subagent, run_subagent_sync
+from memory_graph.orchestration.runner import (
+    SubAgentResult,
+    run_subagent,
+    run_subagent_sync,
+)
 from memory_graph.primitives import Store
 
 
@@ -11,15 +15,11 @@ async def retrieve(
     store: Store,
     *,
     intent: str = "decide",
-) -> str:
-    """Hand `query_text` to the memory sub-agent and return its synthesis.
+) -> SubAgentResult:
+    """Hand `query_text` to the memory sub-agent and return its result.
 
     `intent` is one of "decide" / "explore" / "verify"; it shapes which
-    edge types the sub-agent walks. The result is a focused prose
-    synthesis with cited ids (see `prompts/retrieve.md`).
-
-    Must be awaited from inside an event loop. Use `retrieve_sync` from
-    sync contexts.
+    edge types the sub-agent walks.
     """
     user_message = f"intent: {intent}\n\n{query_text}"
     return await run_subagent(
@@ -34,7 +34,7 @@ def retrieve_sync(
     store: Store,
     *,
     intent: str = "decide",
-) -> str:
+) -> SubAgentResult:
     user_message = f"intent: {intent}\n\n{query_text}"
     return run_subagent_sync(
         task="retrieve",

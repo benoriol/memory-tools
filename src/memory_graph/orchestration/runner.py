@@ -5,12 +5,20 @@ The sub-agent gets:
   - In-process MCP tools wrapping our `Store` primitives
   - A short instruction from the main agent
 
-It returns the final assistant text — the synthesis the main agent sees.
+`run_subagent()` returns a `SubAgentResult` carrying the synthesis text
+PLUS usage / cost / stop-reason metadata extracted from the SDK's
+`ResultMessage`. Callers that just want the synthesis use `.text`;
+callers that want to surface cost (e.g. the MCP tool responses)
+forward the metadata.
+
+On `ResultMessage.is_error` we raise — silent empty returns are the
+historical failure mode the verifier flagged.
 """
 
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
@@ -38,6 +46,13 @@ DEFAULT_EFFORT = "low"
 
 COMPACT_MODEL  = "claude-opus-4-7"
 COMPACT_EFFORT = "medium"
+
+# Hard ceiling on sub-agent tool-use round trips. Without this a confused
+# sub-agent can spin until it hits the model's context window, burning
+# tokens and time silently. Generous enough for normal multi-batch
+# remember/retrieve work; compact runs across more nodes and warrants more.
+DEFAULT_MAX_TURNS = 30
+COMPACT_MAX_TURNS = 50
 
 # Allowed tools when the sub-agent runs. Memory primitives only — no
 # Read/Write/Bash, no network. The sub-agent's job is graph navigation,
@@ -271,6 +286,33 @@ def build_sdk_tools(store: Store) -> list[Any]:
     ]
 
 
+@dataclass(slots=True)
+class SubAgentResult:
+    """What `run_subagent` returns. Carries the synthesis text plus the
+    metadata callers need to surface cost / usage / stop reason.
+    """
+
+    text: str
+    usage: dict[str, Any] = field(default_factory=dict)
+    model_usage: dict[str, Any] = field(default_factory=dict)
+    total_cost_usd: float | None = None
+    stop_reason: str | None = None
+
+
+class SubAgentError(RuntimeError):
+    """Raised when the SDK's ResultMessage signals is_error=True. Carries
+    the stop_reason and any structured errors back to the caller so MCP
+    tool responses can surface a proper failure instead of returning an
+    empty synthesis.
+    """
+
+    def __init__(self, message: str, *, stop_reason: str | None = None,
+                 errors: list[str] | None = None):
+        super().__init__(message)
+        self.stop_reason = stop_reason
+        self.errors = errors or []
+
+
 async def run_subagent(
     *,
     task: str,
@@ -279,8 +321,9 @@ async def run_subagent(
     model: str = DEFAULT_MODEL,
     effort: str = DEFAULT_EFFORT,
     allowed_tools: tuple[str, ...] = DEFAULT_TOOL_NAMES,
-) -> str:
-    """Run the memory sub-agent for `task` and return its final text.
+    max_turns: int = DEFAULT_MAX_TURNS,
+) -> SubAgentResult:
+    """Run the memory sub-agent for `task` and return text + usage metadata.
 
     `task` selects the prompt template (`remember`, `retrieve`, `compact`).
     The sub-agent gets in-process tools over `store` and a system prompt
@@ -289,10 +332,19 @@ async def run_subagent(
     `effort` is the Agent SDK's thinking budget (low|medium|high|xhigh|max).
     Default is "low" — memory ops are mostly mechanical and don't benefit
     much from extended thinking; compact bumps to "medium".
+
+    `max_turns` caps tool-use round trips; raises (via the SDK) if hit.
+
+    Raises:
+      SubAgentError: if the SDK reports `ResultMessage.is_error=True`.
+        Empty synthesis is otherwise indistinguishable from a successful
+        write-nothing run; we convert SDK-level failures into exceptions
+        so the MCP tool layer can return a real error to the caller.
     """
     from claude_agent_sdk import (  # local import: SDK is optional
         AssistantMessage,
         ClaudeAgentOptions,
+        ResultMessage,
         create_sdk_mcp_server,
         query,
     )
@@ -305,19 +357,48 @@ async def run_subagent(
         system_prompt=system_prompt,
         mcp_servers={"memory": server},
         allowed_tools=[f"mcp__memory__{name}" for name in allowed_tools],
+        # Headless sub-agent inside FastMCP's event loop: prompting would
+        # hang stdio forever. The sub-agent's tool surface is the closed
+        # DEFAULT_TOOL_NAMES list (no fs/network), so bypass is safe.
+        permission_mode="bypassPermissions",
+        max_turns=max_turns,
     )
 
     chunks: list[str] = []
+    last_result: ResultMessage | None = None
     async for message in query(prompt=user_message, options=options):
         if isinstance(message, AssistantMessage):
             for block in message.content:
                 text = getattr(block, "text", None)
                 if text:
                     chunks.append(text)
-    return "\n".join(chunks).strip()
+        elif isinstance(message, ResultMessage):
+            last_result = message
+
+    text = "\n".join(chunks).strip()
+    usage = dict(getattr(last_result, "usage", None) or {}) if last_result else {}
+    model_usage = dict(getattr(last_result, "model_usage", None) or {}) if last_result else {}
+    total_cost_usd = getattr(last_result, "total_cost_usd", None) if last_result else None
+    stop_reason = getattr(last_result, "stop_reason", None) if last_result else None
+
+    if last_result is not None and bool(getattr(last_result, "is_error", False)):
+        errors = list(getattr(last_result, "errors", None) or [])
+        raise SubAgentError(
+            f"sub-agent failed (stop_reason={stop_reason!r}): {errors or '<no detail>'}",
+            stop_reason=stop_reason,
+            errors=errors,
+        )
+
+    return SubAgentResult(
+        text=text,
+        usage=usage,
+        model_usage=model_usage,
+        total_cost_usd=total_cost_usd,
+        stop_reason=stop_reason,
+    )
 
 
-def run_subagent_sync(**kwargs: Any) -> str:
+def run_subagent_sync(**kwargs: Any) -> SubAgentResult:
     """Synchronous wrapper for callers NOT already inside an event loop.
 
     The MCP server's tools run inside FastMCP's event loop, so they must
