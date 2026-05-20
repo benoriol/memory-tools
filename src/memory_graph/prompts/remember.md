@@ -51,9 +51,19 @@ notes and connect them into the graph.
 
 6. **Detect "user said" inputs specifically.** If part of the dump
    describes something the user told the agent (a goal, a preference,
-   a hard constraint, a vision), capture it as `kind: user_said`.
-   These notes deserve more weight at retrieval time and should not be
-   superseded by your own observations without an explicit go-ahead.
+   a hard constraint, a vision, a plan), capture it as
+   `kind: user_said`. These notes earn priority attention at retrieval
+   time — they're context the agent should foreground — but they are
+   **not unconditional truth**:
+   - The user may change their mind later. A newer `user_said` can
+     supersede an older one; that's a normal lifecycle event.
+   - A `user_said` may be a one-time remark, a working assumption,
+     or simply mistaken. Capture it as-stated; don't elevate it to a
+     law.
+   - If a later `user_said` clearly contradicts an earlier one, call
+     `supersede(old_id, new_id, "user updated their view")`.
+   - If your own observations contradict an existing `user_said`,
+     flag it in `clarifications_needed` — don't silently override.
 
 ## Response shape
 

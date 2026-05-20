@@ -58,14 +58,24 @@ Strongly encouraged after:
 Pass a thorough dump. Include concrete handles (file paths, commit
 hashes, metrics, hyperparameters) where relevant.
 
+### How `user_said` notes are weighted
+
+`user_said` notes get **priority attention** at retrieval — they're
+context the agent should foreground. But they are not unconditional
+truth: a user can change their mind, a remark may have been a working
+assumption, a plan can go stale. Treat them like a strong prior
+that's still subject to the normal lifecycle (`supersedes`,
+`status: stale`).
+
 ### Heuristic for "worth remembering"
 
 > Would you tell a teammate about this lesson? Would you want to
 > recall it six months from now?
 
 If yes → `memory_remember`. If it's obvious from the code → don't.
-Failed experiments and `user_said` directives are the highest-leverage
-notes; they save future-you from retrying dead ends or violating user
-intent.
+Failed experiments and `user_said` notes tend to be the
+highest-leverage entries — failed experiments save future-you from
+retrying dead ends, and `user_said` notes carry intent that's
+expensive to re-elicit.
 
 <!-- memory-graph-mcp:protocol:end -->

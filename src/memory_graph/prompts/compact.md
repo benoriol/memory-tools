@@ -31,9 +31,11 @@ Consolidate part of the graph. The caller has either named a `scope`
 4. **Apply changes.** Make the writes / marks / supersedes. Don't
    delete; the graph keeps history.
 
-5. **Respect `user_said`.** Never auto-supersede a `user_said` note
-   without flagging in `clarifications_needed`. User directives stay
-   unless the user retracts them.
+5. **Handle `user_said` with care, not reverence.** A newer
+   `user_said` can supersede an older one — that's a normal user
+   revising their view; apply the supersede. But never auto-supersede
+   a `user_said` based on the agent's own observations or other-kind
+   notes — flag the conflict in your response instead.
 
 ## Response shape
 

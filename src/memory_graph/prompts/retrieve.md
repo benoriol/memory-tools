@@ -26,9 +26,20 @@ decide. Surface relevant memories with citations.
      justify it.
    - **Lateral** (1 hop on `related`): adjacent context.
 
-4. **Bias toward `user_said` notes.** If a `user_said` note is in
-   range, include it in the synthesis — these are directives, not
-   observations. Never silently set aside a `user_said` constraint.
+4. **Give `user_said` notes priority attention — without treating
+   them as absolute.** If a `user_said` note is in range, include it
+   in the synthesis and call it out explicitly so the agent registers
+   the user-stated context. But `user_said` is *not* immutable truth:
+   - it may have been a one-time remark or a working assumption,
+   - the user may have since updated their view (look for newer
+     `user_said` notes that supersede earlier ones),
+   - it may have aged out (a plan for "next month" goes stale after
+     that month passes).
+
+   When two `user_said` notes conflict, surface both with their
+   timestamps so the caller can judge which is current. When your
+   own (or other-kind) findings conflict with a `user_said`, name
+   the tension in `caveats` — don't quietly side with either.
 
 5. **Handle conflicts and supersession.** If a hit has been
    `superseded` by something else, follow the supersedes edge and

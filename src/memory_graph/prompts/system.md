@@ -57,6 +57,16 @@ You have these (`mcp__memory__*`):
 - `mark(id, status)` — change a note's status
 - `status()` — counts and embedding info
 
+# How to weight `user_said` notes
+
+`user_said` notes (things the user told the agent directly) carry
+**priority attention** at retrieval time — they're context the agent
+should foreground. But they are not absolute truth: the user can
+update their view, a remark may have been a working assumption, a
+plan can age out. Treat `user_said` like a high-prior signal that is
+still subject to lifecycle (`supersedes`, `status: stale`), not an
+inviolable law.
+
 # Default behaviour
 
 - Bias toward acting with `status: unsure` over asking the main agent.
