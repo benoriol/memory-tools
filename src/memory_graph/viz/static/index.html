@@ -307,7 +307,24 @@ function buildNetwork() {
   const container = document.getElementById("network");
   nodesDS = new vis.DataSet([]);
   edgesDS = new vis.DataSet([]);
+  // Hierarchical layout: more-abstract nodes on top, more-concrete below.
+  // The level for each node is derived from the `abstracts` edge structure
+  // (see computeLevels() called from applyFilter). `related` edges don't
+  // contribute to the hierarchy; they're laid on top semi-transparently.
   network = new vis.Network(container, { nodes: nodesDS, edges: edgesDS }, {
+    layout: {
+      hierarchical: {
+        enabled: true,
+        direction: "UD",            // up→down: abstract on top, concrete below
+        sortMethod: "directed",
+        levelSeparation: 110,
+        nodeSpacing: 160,
+        treeSpacing: 220,
+        blockShifting: true,
+        edgeMinimization: true,
+        parentCentralization: true,
+      },
+    },
     nodes: {
       shape: "dot",
       size: 12,
@@ -315,15 +332,17 @@ function buildNetwork() {
       font: { color: "#d7dae0", size: 13, face: "system-ui" },
     },
     edges: {
-      smooth: { type: "dynamic" },
+      smooth: { type: "cubicBezier", forceDirection: "vertical", roundness: 0.4 },
       arrows: { to: { enabled: true, scaleFactor: 0.5 } },
       font: { color: "#8a8f9c", size: 10, align: "middle", strokeWidth: 0,
               background: "#0b0d11" },
     },
     physics: {
+      // Hierarchical layout disables physics by default; keep it light
+      // for the gentle settling animation.
+      enabled: true,
+      hierarchicalRepulsion: { nodeDistance: 140, damping: 0.4 },
       stabilization: { iterations: 220 },
-      barnesHut: { gravitationalConstant: -8000, springLength: 120,
-                   springConstant: 0.04, avoidOverlap: 0.15 },
     },
     interaction: { hover: true, tooltipDelay: 200 },
   });
@@ -332,6 +351,45 @@ function buildNetwork() {
       selectNote(params.nodes[0]);
     }
   });
+}
+
+// Compute the vertical level for each node from the abstracts edge DAG.
+// Roots (no incoming abstracts) get level 0; each step down adds 1. Nodes
+// not touched by any abstracts edge sink to the bottom so they don't
+// clutter the top with floating "isolated" leaves.
+function computeLevels(visibleNodes, visibleEdges) {
+  const outAbs = {};                 // from -> [tos]
+  const inAbs = {};                  // to   -> [froms]
+  for (const e of visibleEdges) {
+    if (e.type !== "abstracts") continue;
+    (outAbs[e.from] = outAbs[e.from] || []).push(e.to);
+    (inAbs[e.to] = inAbs[e.to] || []).push(e.from);
+  }
+  // BFS from roots, taking max depth for nodes with multiple parents.
+  const levels = {};
+  const queue = [];
+  for (const n of visibleNodes) {
+    if (!(n.id in inAbs)) {
+      levels[n.id] = 0;
+      queue.push(n.id);
+    }
+  }
+  while (queue.length) {
+    const id = queue.shift();
+    for (const child of outAbs[id] || []) {
+      const candidate = (levels[id] || 0) + 1;
+      if (candidate > (levels[child] ?? -1)) {
+        levels[child] = candidate;
+        queue.push(child);
+      }
+    }
+  }
+  // Sink isolated nodes (untouched by abstracts) to a floor below the deepest.
+  const maxLevel = Math.max(0, ...Object.values(levels));
+  for (const n of visibleNodes) {
+    if (!(n.id in levels)) levels[n.id] = maxLevel + 1;
+  }
+  return levels;
 }
 
 function applyFilter() {
@@ -347,22 +405,41 @@ function applyFilter() {
   };
   const visibleNodes = G.nodes.filter(matches);
   const visibleIds = new Set(visibleNodes.map(n => n.id));
+  const visibleEdges = G.edges.filter(
+    e => visibleIds.has(e.from) && visibleIds.has(e.to)
+  );
+  const levels = computeLevels(visibleNodes, visibleEdges);
   const nextNodes = visibleNodes.map(n => ({
     id: n.id,
     label: shortLabel(n.title || n.id),
     title: tooltipFor(n),
-    color: KIND_COLORS[n.kind] || DEFAULT_COLOR,
+    color: kindColor(n.kind),
     font: { color: STATUS_FONT[n.status] || "#d7dae0" },
+    level: levels[n.id] ?? 0,
   }));
-  const nextEdges = G.edges
-    .filter(e => visibleIds.has(e.from) && visibleIds.has(e.to))
-    .map((e, i) => ({
+  // `abstracts` and `supersedes` are the load-bearing structural edges;
+  // they stay opaque and drive the hierarchical layout. `related` is
+  // lateral, so it's drawn semi-transparently on top and (in vis-network's
+  // hierarchical layout) doesn't influence levels because we computed
+  // them ourselves above from abstracts only.
+  const nextEdges = visibleEdges.map((e, i) => {
+    const isStructural = e.type === "abstracts" || e.type === "supersedes";
+    const baseColor = EDGE_COLORS[e.type] || DEFAULT_EDGE_COLOR;
+    return {
       id: "e" + i,
       from: e.from,
       to: e.to,
       label: e.type,
-      color: { color: EDGE_COLORS[e.type] || DEFAULT_EDGE_COLOR },
-    }));
+      color: {
+        color: baseColor,
+        opacity: isStructural ? 1.0 : 0.35,
+        highlight: baseColor,
+        hover: baseColor,
+      },
+      dashes: e.type === "supersedes" ? [6, 4] : false,
+      smooth: isStructural ? undefined : { type: "curvedCW", roundness: 0.25 },
+    };
+  });
   nodesDS.clear(); nodesDS.add(nextNodes);
   edgesDS.clear(); edgesDS.add(nextEdges);
   renderList(visibleNodes);
