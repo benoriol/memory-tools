@@ -233,17 +233,18 @@ def serve(
 ) -> None:
     """Run the viewer server until Ctrl+C."""
     root = Path(store_root).resolve()
-    if not (root / "index.db").exists():
+    if not root.is_dir():
         raise FileNotFoundError(
-            f"no index.db inside {root}. Did you run `memory-graph init` "
-            "in the project? Or pass --path pointing at the .memory-graph/ dir."
+            f"no .memory-graph/ at {root}. Run `memory-graph init` in the "
+            "project, or pass --path pointing at the .memory-graph/ dir."
         )
 
-    # Apply any additive schema changes (e.g., new nullable columns) before
-    # the read-only request handlers start querying. The viz opens the DB
-    # `mode=ro` for every request, which can't ALTER; this one-shot
-    # write-mode open through the canonical opener ensures the schema is
-    # current first.
+    # Open the SQLite index once in write mode. This:
+    #   (1) creates index.db on a freshly-init'd store that's never been
+    #       written to (the dir exists, the .db doesn't yet);
+    #   (2) applies any additive schema changes (new nullable columns)
+    #       before the read-only request handlers start querying — they
+    #       open `mode=ro` per request which can't ALTER.
     from memory_graph.storage.db import open_db as _open_db_rw
     _open_db_rw(root / "index.db").close()
 

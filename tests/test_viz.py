@@ -94,6 +94,41 @@ def test_open_index_errors_when_db_missing(tmp_path: Path):
         _open_index(tmp_path)
 
 
+def test_serve_creates_db_on_fresh_init(tmp_path: Path):
+    """Regression: `memory-graph init` makes the directory but doesn't write
+    the SQLite file until something opens the store. The viz used to refuse
+    to start in that state — it should create the DB instead."""
+    from memory_graph.viz.server import serve as viz_serve
+
+    root = tmp_path / ".memory-graph"
+    root.mkdir()
+    (root / "notes").mkdir()  # mimic what `memory-graph init` produces
+
+    # serve() blocks (it calls httpd.serve_forever); we just need to exercise
+    # the prelude that should create index.db. Spawn it in a background thread
+    # and tear it down immediately.
+    import threading
+    import time
+
+    started = threading.Event()
+
+    def _runner():
+        try:
+            # Pick a port that's almost certainly free; if not, that's fine —
+            # we just want the prelude to run before bind.
+            viz_serve(root, port=0, open_browser=False)
+        except OSError:
+            pass
+        finally:
+            started.set()
+
+    t = threading.Thread(target=_runner, daemon=True)
+    t.start()
+    # Give the prelude time to run (open_db, etc.) before assertion.
+    time.sleep(0.5)
+    assert (root / "index.db").exists(), "viz should have created index.db"
+
+
 # -- end-to-end over HTTP ---------------------------------------------------
 
 
