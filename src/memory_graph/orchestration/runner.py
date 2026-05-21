@@ -28,24 +28,39 @@ from memory_graph.orchestration.operator import read_operator_context
 from memory_graph.primitives import Store
 from memory_graph.storage import Edge
 
-# Sub-agent model selection.
+# Sub-agent model selection — one model per operation.
 #
-# remember / retrieve land on Sonnet at low effort. Haiku was tempting
-# for speed but ignored the dup-flag → supersede flow in practice
-# (wrote duplicates instead of acknowledging them). Sonnet-low is
-# noticeably more attentive to multi-step instructions and still
-# substantially faster than Sonnet at default effort. compact stays on
-# Opus at medium — cross-cluster reasoning warrants both.
+# remember (writes): Sonnet at low effort. Haiku was tempting for speed
+#   but consistently ignored the dup-flag → supersede flow (wrote
+#   duplicates instead of acknowledging them). Sonnet-low honors the
+#   multi-step write/link/supersede instructions reliably.
+#
+# retrieve (reads): Haiku at low effort. Read-only graph navigation; no
+#   write discipline needed. Benchmarked at 0.883 overall, 1.00 on the
+#   hard tier (multi-hop walks) — equal quality to Sonnet at ~3× the
+#   speed.
+#
+# compact: Opus at medium effort. Cross-cluster reasoning across many
+#   notes — the heaviest of the three operations.
 #
 # `effort` is the Agent SDK's extended-thinking budget knob:
 #   "low"    — minimal thinking, fastest
 #   "medium" — balanced (default for agentic tasks if unspecified)
 #   "high" / "xhigh" / "max" — progressively more thinking
-DEFAULT_MODEL  = "claude-sonnet-4-6"
-DEFAULT_EFFORT = "low"
+REMEMBER_MODEL  = "claude-sonnet-4-6"
+REMEMBER_EFFORT = "low"
 
-COMPACT_MODEL  = "claude-opus-4-7"
-COMPACT_EFFORT = "medium"
+RETRIEVE_MODEL  = "claude-haiku-4-5-20251001"
+RETRIEVE_EFFORT = "low"
+
+COMPACT_MODEL   = "claude-opus-4-7"
+COMPACT_EFFORT  = "medium"
+
+# `run_subagent` defaults to the remember configuration if a caller
+# doesn't override — it's the strictest of the three (write discipline),
+# so it's the safest fallback.
+DEFAULT_MODEL   = REMEMBER_MODEL
+DEFAULT_EFFORT  = REMEMBER_EFFORT
 
 # Hard ceiling on sub-agent tool-use round trips. Without this a confused
 # sub-agent can spin until it hits the model's context window, burning

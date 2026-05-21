@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from memory_graph.orchestration.runner import (
+    RETRIEVE_EFFORT,
+    RETRIEVE_MODEL,
     SubAgentResult,
     run_subagent,
     run_subagent_sync,
@@ -18,6 +20,10 @@ async def retrieve(
 ) -> SubAgentResult:
     """Hand `query_text` to the memory sub-agent and return its result.
 
+    Uses Haiku at low effort (RETRIEVE_MODEL/RETRIEVE_EFFORT) — read-only
+    graph navigation needs no write discipline, and Haiku matched Sonnet
+    on quality at ~3× the speed in the retrieval benchmark.
+
     `intent` is one of "decide" / "explore" / "verify"; it shapes which
     edge types the sub-agent walks.
     """
@@ -26,6 +32,8 @@ async def retrieve(
         task="retrieve",
         user_message=user_message,
         store=store,
+        model=RETRIEVE_MODEL,
+        effort=RETRIEVE_EFFORT,
     )
 
 
@@ -40,4 +48,6 @@ def retrieve_sync(
         task="retrieve",
         user_message=user_message,
         store=store,
+        model=RETRIEVE_MODEL,
+        effort=RETRIEVE_EFFORT,
     )
