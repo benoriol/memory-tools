@@ -1,0 +1,172 @@
+{
+  "no_memory": {
+    "arm": "no_memory",
+    "score": 0.067,
+    "field_scores": {
+      "culprit": 0.0,
+      "motive": 0.0,
+      "weapon": 0.0,
+      "location": 0.0,
+      "evidence": 0.3333333333333333
+    },
+    "phase1": {
+      "text": "## Whitfield Manor Incident \u2014 Investigation Findings\n\nBased on careful cross-referencing of all six witness statements, here are my deductions:\n\n---\n\n### \ud83d\udd0d CONCLUSION\n\n**WHO:** **Eleanor Vance**\n\n**MOTIVE:** Financial desperation. As confirmed by solicitor Charles Davies (Witness 4), Eleanor stood to inherit **nothing** once her cousin Lord Whitfield came of age *next month* \u2014 the entire estate would pass to him. She had visited Davies' office twice in the fortnight prior, desperately asking if the will could be contested. The deceased was planning to formally ratify the will the following week, making this a ticking clock for Eleanor.\n\n**WEAPON:** A **slender, sharp-pointed instrument** \u2014 most likely a letter opener or thin stiletto. Constable Wright (Witness 3) confirmed the wound was narrow, clean, ~4cm deep, consistent with such an instrument and explicitly *inconsistent* with a blunt object like a candlestick. Dr. Holloway (Witness 1) noted Eleanor was \"clutching something small in her right hand\" as she walked toward the library at 8:50pm \u2014 this was almost certainly the weapon.\n\n**LOCATION:** The **library** at Whitfield Manor.\n\n---\n\n### \ud83d\udccb THREE KEY PIECES OF EVIDENCE\n\n1. **Eleanor was seen approaching the library with the weapon in hand** \u2014 Dr. Holloway (Witness 1) observed her walking briskly toward the library at 8:50pm, looking anxious and clutching something small. The single sharp shout he heard at ~9:05pm came from the direction of the library.\n\n2. **Eleanor's own words place her at the scene of the crime** \u2014 Mrs. Wickham (Witness 5), passing the library at ~9pm, heard a heated argument between a man and a woman. The woman shouted *\"I won't be left with nothing!\"* \u2014 directly echoing Eleanor's financial grievance \u2014 followed by sounds of a struggle, a thud, then silence.\n\n3. **Small, narrow women's footprints fled the library via the French windows** \u2014 Gardener Tom Briggs (Witness 6) found muddy footprints at ~9:15pm leading from below the library's French windows (unlatched from the inside) into the back garden. The prints were \"small and narrow, clearly a woman's shoe,\" consistent with Eleanor making her escape immediately after the incident.\n\n---\n\n### \ud83d\uddd2\ufe0f SUMMARY TABLE\n\n| Fact | Deduction |\n|------|-----------|\n| **Perpetrator** | Eleanor Vance |\n| **Motive** | Stood to inherit nothing under the will being ratified the following week |\n| **Weapon** | Slender, sharp-pointed instrument (letter opener / stiletto) |\n| **Location** | The Library, Whitfield Manor |\n| **Evidence 1** | Seen clutching small object, heading to library at 8:50pm |\n| **Evidence 2** | Woman's voice heard saying \"I won't be left with nothing!\" during library struggle at 9pm |\n| **Evidence 3** | Small women's footprints fled library via unlatched French windows at ~9:15pm |\n\n> **Note on the candlestick (Lady Pembury, Witness 2):** The missing gold candlestick is a red herring. The constable's forensic analysis (Witness 3) definitively rules out a blunt weapon \u2014 the wound is inconsistent with a candlestick blow.",
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 26692,
+        "output_tokens": 1063,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [
+          {
+            "input_tokens": 1,
+            "output_tokens": 983,
+            "cache_read_input_tokens": 13726,
+            "cache_creation_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard"
+      },
+      "cost_usd": 0.0247276,
+      "seconds": 22.8
+    },
+    "phase2": {
+      "text": "I do not have access to any `mcp__memory-graph__` tools, and no prior investigation findings are stored in a memory graph accessible to me. I have no documented case findings for a \"Whitfield Manor incident\" to retrieve.\n\nI cannot fabricate a report with invented culprits, weapons, motives, or evidence. Doing so would produce a false and misleading answer.\n\n**What you should do:**\n- If the prior investigation was conducted in a different Claude Code session, the memory graph MCP server may not be connected in this session. Please ensure the memory-graph MCP server is running and properly configured.\n- If you have the investigation notes saved elsewhere (a file, a previous conversation), please share them and I'll format the final report immediately.",
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 1913,
+        "cache_read_input_tokens": 24417,
+        "output_tokens": 307,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 1913,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [
+          {
+            "input_tokens": 1,
+            "output_tokens": 168,
+            "cache_read_input_tokens": 13086,
+            "cache_creation_input_tokens": 158,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 158
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard"
+      },
+      "cost_usd": 0.020008849999999998,
+      "seconds": 8.6
+    },
+    "total_in_tokens": 6,
+    "total_out_tokens": 1370,
+    "total_seconds": 31.4,
+    "total_cost_usd": 0.04473645
+  },
+  "with_memory": {
+    "arm": "with_memory",
+    "score": 1.0,
+    "field_scores": {
+      "culprit": 1.0,
+      "motive": 1.0,
+      "weapon": 1.0,
+      "location": 1.0,
+      "evidence": 1.0
+    },
+    "phase1": {
+      "text": "Now let me analyze the statements and save findings to memory.\nAll findings have been saved to memory. Here is the complete deduction:\n\n---\n\n## \ud83d\udd0d Whitfield Manor Incident \u2014 Findings\n\n### \ud83d\udc64 Perpetrator: **Eleanor Vance**\n\n### \ud83d\udcb0 Motive: **Financial Disinheritance**\nEleanor was set to inherit **nothing** once her cousin Lord Whitfield came of age \u2014 just one month away. The deceased was planning to formally ratify the will the following week. Eleanor had visited solicitor Charles Davies twice in the prior fortnight, desperately seeking to contest the will.\n\n### \ud83d\udde1\ufe0f Weapon: **A slender, sharp-pointed instrument** (likely a letter opener or thin stiletto)\nConstable Wright's forensic assessment confirmed the wound was narrow, clean, and ~4cm deep \u2014 **explicitly ruling out** the candlestick. Dr. Holloway noted Eleanor was clutching something small in her right hand as she headed toward the library.\n\n### \ud83d\udccd Location: **The Library at Whitfield Manor** (~9:05pm)\n\n---\n\n### \ud83e\uddfe Three Key Evidence Points\n\n1. **Eleanor placed at scene (Dr. Holloway + Tom Briggs):** She was seen walking briskly toward the library at 8:50pm, clutching a small object. Small, narrow women's footprints were found leading from the library's French windows into the garden at 9:15pm \u2014 the windows were unlatched from *inside*, consistent with her fleeing after the act.\n\n2. **Overheard argument (Mrs. Wickham):** The housekeeper heard a man and woman arguing in the library around 9pm. The woman clearly shouted *\"I won't be left with nothing!\"* \u2014 directly mirroring Eleanor's documented financial grievance. A struggle, a thud, then silence followed.\n\n3. **Motive confirmed by solicitor (Charles Davies):** Davies confirmed Eleanor's powerful financial motive and her active attempts to contest the will in the days leading up to the incident, establishing premeditation.",
+      "usage": {
+        "input_tokens": 7,
+        "cache_creation_input_tokens": 3146,
+        "cache_read_input_tokens": 54990,
+        "output_tokens": 2120,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 3146,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [
+          {
+            "input_tokens": 1,
+            "output_tokens": 466,
+            "cache_read_input_tokens": 14754,
+            "cache_creation_input_tokens": 1549,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 1549
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard"
+      },
+      "cost_usd": 0.060891499999999994,
+      "seconds": 41.5
+    },
+    "phase2": {
+      "text": "Here is the final report on the Whitfield Manor incident:\n\n---\n\n**WHITFIELD MANOR \u2014 FINAL INCIDENT REPORT**\n\n**CULPRIT:** Eleanor Vance\n**MOTIVE:** Imminent financial disinheritance\n**WEAPON:** Letter opener (slender, sharp-pointed implement)\n**LOCATION:** The Library\n**EVIDENCE:** Dr. Holloway witnessed Eleanor heading toward the library at 8:50 pm clutching a small object in her right hand; Mrs. Wickham overheard a woman's voice shouting \"I won't be left with nothing!\" from the library at 9:05 pm; small women's footprints led from the library's unlatched French windows into the garden at 9:15 pm",
+      "usage": {
+        "input_tokens": 6,
+        "cache_creation_input_tokens": 3905,
+        "cache_read_input_tokens": 38476,
+        "output_tokens": 446,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 3905,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [
+          {
+            "input_tokens": 1,
+            "output_tokens": 175,
+            "cache_read_input_tokens": 13868,
+            "cache_creation_input_tokens": 1368,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 1368
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard"
+      },
+      "cost_usd": 0.03379055,
+      "seconds": 41.3
+    },
+    "total_in_tokens": 13,
+    "total_out_tokens": 2566,
+    "total_seconds": 82.8,
+    "total_cost_usd": 0.09468204999999999
+  }
+}
