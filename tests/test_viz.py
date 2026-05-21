@@ -1,242 +1,83 @@
-"""HTTP viewer: API endpoints + HTML serving."""
+"""Visualization FastAPI app tests."""
 
 from __future__ import annotations
 
-import json
-import threading
-import time
-import urllib.error
-import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
-from memory_graph.embed import FakeEmbedder
-from memory_graph.primitives import Store
-from memory_graph.storage import Edge
-from memory_graph.viz.server import (
-    _graph_json,
-    _make_handler,
-    _note_json,
-    _open_index,
-)
+from memory_recall import subagent as subagent_module
+from memory_recall.embed import DeterministicFakeEmbedder
+from memory_recall.store import Store
+from memory_recall.viz.app import create_app
 
 
 @pytest.fixture()
-def populated_store(store: Path):
-    """Returns (store_root, {"alpha": id, "beta": id, "gamma": id})."""
-    with Store(store, embedder=FakeEmbedder(dim=32)) as s:
-        a = s.capture(title="alpha", summary="alpha sum", body="alpha body", kind="lesson")
-        b = s.capture(
-            title="beta", summary="beta sum", body="beta body", kind="capture",
-            tags=["one", "two"],
-        )
-        c = s.capture(
-            title="gamma", summary="gamma sum", body="gamma body", kind="principle",
-            edges=[Edge(to_id=a["id"], type="generalizes")],
-        )
-        s.link(b["id"], a["id"], "derived_from")
-    return store, {"alpha": a["id"], "beta": b["id"], "gamma": c["id"]}
+def client(store_root: Path):
+    store = Store(store_root, DeterministicFakeEmbedder())
+    store.capture("body one", title="One", summary="First note", keywords=["k"], paraphrases=["p"])
+    store.capture("body two", title="Two", summary="Second note", keywords=["k2"], paraphrases=["p2"])
+    app = create_app(store=store)
+    return TestClient(app), store
 
 
-# -- direct helper functions ------------------------------------------------
+def test_list_notes(client) -> None:
+    c, _ = client
+    r = c.get("/api/notes")
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data["notes"]) == 2
+    for n in data["notes"]:
+        assert "embedding_2d" in n
+        assert len(n["embedding_2d"]) == 2
 
 
-def test_graph_json_counts_and_shapes(populated_store):
-    root, _ = populated_store
-    conn = _open_index(root)
-    try:
-        g = _graph_json(conn)
-    finally:
-        conn.close()
-    assert g["stats"]["total_nodes"] == 3
-    assert g["stats"]["total_edges"] == 2
-    assert set(g["stats"]["by_kind"]) == {"lesson", "capture", "principle"}
-    # Every node has the fields the viewer reads.
-    for n in g["nodes"]:
-        for key in ("id", "title", "summary", "kind", "status"):
-            assert key in n
-    for e in g["edges"]:
-        for key in ("from", "to", "type", "weight"):
-            assert key in e
+def test_get_note_returns_views(client) -> None:
+    c, store = client
+    nid = store.list_notes()[0].id
+    r = c.get(f"/api/notes/{nid}")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["id"] == nid
+    kinds = sorted(v["kind"] for v in data["views"])
+    assert "summary" in kinds
 
 
-def test_note_json_includes_body_edges_tags_incoming(populated_store):
-    root, ids = populated_store
-    conn = _open_index(root)
-    try:
-        # beta points to alpha via derived_from, and has tags
-        note = _note_json(conn, root, ids["beta"])
-    finally:
-        conn.close()
-    assert note is not None
-    assert note["title"] == "beta"
-    assert sorted(note["tags"]) == ["one", "two"]
-    out_types = {e["type"] for e in note["edges"]}
-    assert "derived_from" in out_types
-    # alpha should be reachable via beta → alpha
-    targets = {e["to"] for e in note["edges"]}
-    assert ids["alpha"] in targets
+def test_get_note_404(client) -> None:
+    c, _ = client
+    r = c.get("/api/notes/does-not-exist")
+    assert r.status_code == 404
 
 
-def test_note_json_returns_none_for_missing(populated_store):
-    root, _ = populated_store
-    conn = _open_index(root)
-    try:
-        assert _note_json(conn, root, "no-such-id") is None
-    finally:
-        conn.close()
+def test_search(client, monkeypatch: pytest.MonkeyPatch) -> None:
+    c, store = client
+
+    target_summary = store.list_notes()[-1].summary  # oldest is last
+
+    async def fake_search(query: str, *, model=None):
+        return {
+            "keywords": [target_summary],
+            "paraphrases": [],
+            "query_views": [query, target_summary],
+        }
+
+    # Patch the import inside viz.app's namespace (it imported the symbol).
+    from memory_recall.viz import app as viz_app
+
+    monkeypatch.setattr(viz_app, "expand_for_search", fake_search)
+
+    r = c.post("/api/search", json={"query": "anything", "k": 5})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["expanded"]["keywords"] == [target_summary]
+    assert data["results"]
+    assert data["results"][0]["score"] >= data["results"][-1]["score"]
 
 
-def test_open_index_errors_when_db_missing(tmp_path: Path):
-    with pytest.raises(FileNotFoundError):
-        _open_index(tmp_path)
-
-
-def test_serve_creates_db_on_fresh_init(tmp_path: Path):
-    """Regression: `memory-graph init` makes the directory but doesn't write
-    the SQLite file until something opens the store. The viz used to refuse
-    to start in that state — it should create the DB instead."""
-    from memory_graph.viz.server import serve as viz_serve
-
-    root = tmp_path / ".memory-graph"
-    root.mkdir()
-    (root / "notes").mkdir()  # mimic what `memory-graph init` produces
-
-    # serve() blocks (it calls httpd.serve_forever); we just need to exercise
-    # the prelude that should create index.db. Spawn it in a background thread
-    # and tear it down immediately.
-    import threading
-    import time
-
-    started = threading.Event()
-
-    def _runner():
-        try:
-            # Pick a port that's almost certainly free; if not, that's fine —
-            # we just want the prelude to run before bind.
-            viz_serve(root, port=0, open_browser=False)
-        except OSError:
-            pass
-        finally:
-            started.set()
-
-    t = threading.Thread(target=_runner, daemon=True)
-    t.start()
-    # Give the prelude time to run (open_db, etc.) before assertion.
-    time.sleep(0.5)
-    assert (root / "index.db").exists(), "viz should have created index.db"
-
-
-# -- end-to-end over HTTP ---------------------------------------------------
-
-
-def _serve_in_thread(handler_cls):
-    """Start a one-shot ThreadingHTTPServer on a random port."""
-    httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
-    port = httpd.server_address[1]
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    # Give the server a tick to start accepting connections.
-    time.sleep(0.05)
-    return httpd, port
-
-
-def _get(url: str) -> tuple[int, bytes]:
-    try:
-        with urllib.request.urlopen(url, timeout=2.0) as resp:
-            return resp.status, resp.read()
-    except urllib.error.HTTPError as exc:
-        return exc.code, exc.read()
-
-
-def test_http_root_serves_html(populated_store):
-    root, _ = populated_store
-    httpd, port = _serve_in_thread(_make_handler(root))
-    try:
-        status, body = _get(f"http://127.0.0.1:{port}/")
-        assert status == 200
-        text = body.decode("utf-8")
-        assert "<title>memory-graph viewer</title>" in text
-        # vis-network from the CDN — confirms we serve the real template.
-        assert "vis-network" in text
-        # Regression: the grid must have an explicit row size, otherwise the
-        # #network cell collapses to the height of the side panels' content
-        # and vis-network renders into a tiny strip the user can miss.
-        assert "grid-template-rows" in text
-        assert "#network" in text and "height: 100%" in text
-        # List view (graph/list toggle) is part of the served UI.
-        assert 'id="view-toggle"' in text
-        assert 'id="list"' in text
-        assert 'data-view="graph"' in text
-        assert 'data-view="list"' in text
-        assert "function renderList" in text
-        assert "function selectNote" in text
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-
-
-def test_http_graph_endpoint(populated_store):
-    root, ids = populated_store
-    httpd, port = _serve_in_thread(_make_handler(root))
-    try:
-        status, body = _get(f"http://127.0.0.1:{port}/api/graph")
-        assert status == 200
-        data = json.loads(body)
-        assert data["stats"]["total_nodes"] == 3
-        node_ids = {n["id"] for n in data["nodes"]}
-        assert ids["alpha"] in node_ids
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-
-
-def test_http_note_endpoint_and_404(populated_store):
-    root, ids = populated_store
-    httpd, port = _serve_in_thread(_make_handler(root))
-    try:
-        # Happy path.
-        status, body = _get(f"http://127.0.0.1:{port}/api/note/{ids['gamma']}")
-        assert status == 200
-        data = json.loads(body)
-        assert data["title"] == "gamma"
-
-        # 404.
-        status, body = _get(f"http://127.0.0.1:{port}/api/note/no-such-id")
-        assert status == 404
-        data = json.loads(body)
-        assert "error" in data
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-
-
-def test_http_operator_endpoint(populated_store):
-    root, _ = populated_store
-    # Seed an operator context file.
-    op = root / "_operator" / "context.md"
-    op.parent.mkdir(parents=True, exist_ok=True)
-    op.write_text("custom operator notes\n")
-
-    httpd, port = _serve_in_thread(_make_handler(root))
-    try:
-        status, body = _get(f"http://127.0.0.1:{port}/api/operator")
-        assert status == 200
-        data = json.loads(body)
-        assert data["markdown"].strip() == "custom operator notes"
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-
-
-def test_http_unknown_path_404(populated_store):
-    root, _ = populated_store
-    httpd, port = _serve_in_thread(_make_handler(root))
-    try:
-        status, _ = _get(f"http://127.0.0.1:{port}/api/does-not-exist")
-        assert status == 404
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
+def test_delete_note(client) -> None:
+    c, store = client
+    nid = store.list_notes()[0].id
+    r = c.delete(f"/api/notes/{nid}")
+    assert r.status_code == 200
+    assert c.get(f"/api/notes/{nid}").status_code == 404

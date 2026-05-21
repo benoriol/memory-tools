@@ -1,0 +1,22 @@
+================================================================
+e10: NONE vs SINGLE on cross-session bug recall
+================================================================
+=== e10 ARM: none ===
+  workdir: /tmp/lab-bench/e10-none-20260521-105235
+  phase 1 (investigate) ... 89.1s  cost=$0.1139  non_src_files=0  NOTES.md=0B
+  phase1 tool calls: {'Bash': 6}
+  phase 2 (diagnose) ... 68.5s  cost=$0.1273
+  phase2 tool calls: {'Agent': 1, 'Bash': 1, 'Read': 30}
+  score: 30/30  (100.00%)
+=== e10 ARM: single ===
+  workdir: /tmp/lab-bench/e10-single-20260521-105513
+  phase 1 (investigate) ... 97.6s  cost=$0.1942  non_src_files=1  NOTES.md=8357B
+  phase1 tool calls: {'Agent': 1, 'Bash': 1, 'Read': 30, 'Write': 1}
+  phase 2 (diagnose) ... 43.7s  cost=$0.0718
+  phase2 tool calls: {'Read': 3, 'Bash': 1}
+  score: 30/30  (100.00%)
+
+FINAL
+  NONE    30/30  total=$0.2411 (157.6s)  p2=$0.1273
+  SINGLE  30/30  total=$0.2660 (141.3s)  p2=$0.0718  NOTES.md=8357B
+  verdict: FAIL  (accuracy_pass=True, cost_pass=False)

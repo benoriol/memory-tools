@@ -1,33 +1,22 @@
-"""ULID-style id generation."""
+"""ID generator tests."""
 
-from memory_graph.storage.ids import is_valid_id, new_id
-
-
-def test_id_is_26_chars():
-    assert len(new_id()) == 26
+from memory_recall.storage.ids import new_id
 
 
-def test_id_is_crockford_base32():
-    value = new_id()
-    assert is_valid_id(value)
-    # Crockford excludes I, L, O, U.
-    for forbidden in "ILOU":
-        assert forbidden not in value
+def test_length_and_charset() -> None:
+    i = new_id()
+    assert len(i) == 26
+    assert set(i) <= set("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
 
 
-def test_ids_are_unique_in_bulk():
-    ids = {new_id() for _ in range(1000)}
-    assert len(ids) == 1000
+def test_monotonic_across_rapid_calls() -> None:
+    ids = [new_id(now_ms=1000 + n) for n in range(100)]
+    assert ids == sorted(ids)
+    assert len(set(ids)) == 100
 
 
-def test_ids_are_time_sortable():
-    a = new_id(now_ms=1_000_000)
-    b = new_id(now_ms=2_000_000)
-    assert a < b
-
-
-def test_invalid_ids_rejected():
-    assert not is_valid_id("")
-    assert not is_valid_id("nope")
-    assert not is_valid_id("a" * 26)  # lowercase
-    assert not is_valid_id("I" * 26)  # forbidden char
+def test_same_timestamp_distinct() -> None:
+    a = new_id(now_ms=42)
+    b = new_id(now_ms=42)
+    assert a != b
+    assert a[:10] == b[:10]

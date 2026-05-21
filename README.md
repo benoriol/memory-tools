@@ -1,127 +1,117 @@
-# memory-graph-mcp
+# memory-recall
 
-Per-project graph memory for Claude Code, exposed as an MCP server.
+Per-project multi-vector memory for Claude Code, exposed as an MCP
+server with a visualization UI.
 
 Notes are stored as markdown files with YAML frontmatter; a SQLite
-index provides fast lookups and embedding-based semantic search. The
-model is deliberately flat: every note is the same kind of thing with
-a free-text `kind` label (e.g. `experiment`, `mistake`, `user_said`,
-`bug_fix`, `principle`) that's purely descriptive. Three edge types
-do the structural work — `abstracts` (directed: from-node is more
-abstract than to-node), `related` (lateral), and `supersedes` (the
-only behavior-bearing edge — flips the old note's status).
+index plus locally-computed embeddings (FastEmbed,
+sentence-transformers/all-MiniLM-L6-v2) power the retrieval. Each
+note is indexed under several embedded "views" — its summary, plus
+sub-agent-generated keywords and paraphrases — so a query that uses
+different vocabulary than the original note can still find it.
 
-## How it works
+## The API choice that matters: two-step recall
 
-The main agent in Claude Code calls three tools:
+The main agent recalls memories in two cheap steps:
 
-| Tool                         | When                                         |
-| ---------------------------- | -------------------------------------------- |
-| `memory_remember(dump)`      | After experiments / decisions / lessons      |
-| `memory_retrieve(query)`     | Before non-trivial decisions, design choices |
-| `memory_compact(scope?)`     | When a region of the graph needs cleanup     |
+1. **`memory_retrieve_candidates(query)`** — open-ended input (a
+   question, a task, a bug, an error message). A sub-agent expands
+   it into canonical keywords and paraphrases, and you get back the
+   top-k candidate notes with their **summaries only**. Typical
+   response is ~1000 tokens for k=10.
+2. **`memory_get(id)`** — for whichever candidate(s) the main agent
+   judges relevant, fetch the full body.
 
-Each one spawns a **memory sub-agent** (via the Claude Agent SDK,
-in-process) that has access to the graph primitives. The sub-agent
-decomposes dumps into multiple notes at appropriate abstraction
-levels, walks the graph to find connections, and returns a short
-synthesis. Exploration tokens stay in the sub-agent; the main agent
-only sees the result.
+Most calls only need step 1. Bodies are only loaded when actually
+needed, and the main agent — not the memory layer — decides what's
+relevant.
 
-Ten lower-level primitives are also exposed for direct use:
-`memory_search`, `memory_get`, `memory_neighbors`, `memory_capture`,
-`memory_capture_batch`, `memory_link`, `memory_unlink`,
-`memory_supersede`, `memory_mark`, `memory_status`.
+## Five tools
+
+| Tool | Purpose |
+|------|---------|
+| `memory_capture(content, tags?)` | Save an open-ended raw note; sub-agent indexes it under summary + keywords + paraphrases. |
+| `memory_retrieve_candidates(query, k=10)` | **Step 1 of recall.** Top-k candidates with summaries. |
+| `memory_get(id)` | **Step 2 of recall.** Full body of one note. |
+| `memory_list(limit=100, offset=0)` | Browse all notes, newest first. |
+| `memory_status()` | Store stats. |
+
+## Install
+
+```bash
+pipx install -e .
+```
+
+Then in any project directory:
+
+```bash
+memory-recall init       # creates .memory-recall/
+memory-recall register   # writes .mcp.json so Claude Code picks it up
+memory-recall serve      # (Claude Code runs this for you when needed)
+```
+
+## Visualization
+
+```bash
+memory-recall viz        # http://localhost:8765 by default
+```
+
+Browse all notes, see a 2D PCA projection of their embeddings, and
+test searches interactively — the UI shows what keywords/paraphrases
+the sub-agent generated for the query alongside the ranked results.
+
+## Sub-agent configuration
+
+The capture and recall expansions are done by a `claude_agent_sdk`
+sub-agent. Defaults (measured choice — see `DESIGN.md` and
+`demos/eval/experiments/e25_*`):
+
+- Model: `claude-sonnet-4-6`
+- Extended thinking: explicitly **disabled**
+  (`thinking={"type": "disabled"}`)
+- Override via env var: `MEMORY_RECALL_SUBAGENT_MODEL`
 
 ## Architecture
 
 ```
-Claude Code (Max subscription)
-  └── main agent calls memory_remember / retrieve / compact
-        │
-        ▼
-  memory-graph MCP server (stdio)
-    ├── primitives: search / get / neighbors / capture / link / ...
-    └── orchestration: spawns Agent SDK sub-agent in-process,
-                       using CLAUDE_CODE_OAUTH_TOKEN to auth against
-                       the user's subscription.
-                       Sub-agent's tools are also the primitives
-                       above, surfaced via create_sdk_mcp_server.
-        │
-        ▼
-  .memory-graph/  (per-project, in the repo root)
-    ├── notes/*.md     <- markdown with YAML frontmatter
-    ├── index.db       <- SQLite + embeddings (derivable from notes/)
-    ├── _operator/     <- sub-agent's working notes
-    └── _pending/      <- deferred items
+Claude Code
+  └── main agent
+        ├── memory_capture          ─┐
+        ├── memory_retrieve_candidates ─┤
+        ├── memory_get              ─┤  MCP tools
+        ├── memory_list             ─┤
+        └── memory_status           ─┘
+              │
+              ▼
+        memory-recall MCP server (stdio)
+              ├── Sub-agent (Sonnet 4.6, no thinking) — expands raw
+              │   text into title + summary + keywords + paraphrases
+              ├── Local embedder (FastEmbed MiniLM) — one vector
+              │   per view
+              └── SQLite store + markdown files at .memory-recall/
 ```
 
-No API key needed; runs entirely on a Claude Max subscription via the
-Agent SDK's OAuth-token authentication. Embeddings are local
-(FastEmbed `all-MiniLM-L6-v2`, ~80 MB on disk).
-
-## Install
-
-See [`docs/INSTALL.md`](./docs/INSTALL.md). Roughly:
-
-```bash
-claude setup-token              # one-time
-pipx install -e .               # install the package
-# add MCP server entry to ~/.claude.json with CLAUDE_CODE_OAUTH_TOKEN
-cd ~/projects/your-project
-memory-graph init               # creates .memory-graph/
-# paste docs/CLAUDE.md.template into your project's CLAUDE.md
-```
-
-## Status
-
-V0. Working pieces:
-
-- [x] SQLite + markdown storage with typed edges, ULID ids
-- [x] Local FastEmbed embeddings
-- [x] 10 pure primitives (search, get, neighbors, capture, link, ...)
-- [x] MCP server exposing all primitives over stdio
-- [x] Agent SDK orchestration: remember / retrieve / compact
-- [x] CLI: init / serve / digest / reindex / status
-- [x] CLAUDE.md template and install docs
-- [x] 73 unit tests passing
-
-Not yet:
-
-- [ ] Auto-update of operator-context after each operation
-- [ ] Tiered consolidation (continuous → per-insert → regional → global)
-- [ ] PreToolUse hook for "recall before risky edits"
-- [ ] Confidence decay and `last_verified_at` re-stamping
-- [ ] Path-anchored archaeology surfacing
-- [ ] Pending-op resume for clarification round-trips
-- [ ] sqlite-vec swap when stores get big
-
-## Layout
+## Repository layout
 
 ```
-src/memory_graph/
-├── storage/        SQLite + markdown + Note model + ULID ids
-├── embed/          Embedder protocol, FastEmbed, deterministic fake
-├── primitives/     Store class with all memory operations
-├── orchestration/  Agent SDK runner + remember / retrieve / compact
-├── prompts/        system.md + remember.md + retrieve.md + compact.md
-├── server.py       FastMCP server registering 13 tools
-└── cli.py          memory-graph: init / serve / digest / reindex / status
-
-tests/              Pytest suite, ~75 tests
-docs/               INSTALL.md, CLAUDE.md.template
+src/memory_recall/
+  storage/       SQLite + markdown + ULIDs + Note model
+  embed/         Embedder protocol, FastEmbed, fake for tests
+  store.py       capture + multi-vector search + max-pool ranking
+  subagent.py    capture/search sub-agent (Sonnet, no thinking)
+  server.py      FastMCP server registering the 5 tools
+  cli.py         init / serve / status / viz / register / unregister
+  viz/           FastAPI + plotly visualization
+  prompts/       capture.md, search.md
+tests/           pytest suite
+demos/eval/
+  experiments/   benchmarks (e10, e25, e25b, ...) with READMEs
+  lab/           exploratory scratch from earlier iterations
 ```
 
-## Tests
+See `DESIGN.md` for the schema, the multi-vector retrieval algorithm,
+and the rationale behind the API choices.
 
-```bash
-pip install -e ".[dev]"
-pytest
-```
-
-Two opt-in slow tests:
-
-- `FASTEMBED=1 pytest -k local_embedder_real_model` — downloads
-  ~80 MB on first run, verifies the real model loads.
-- `CLAUDE_CODE_OAUTH_TOKEN=... pytest -k end_to_end` — runs the
-  real sub-agent against the Anthropic API.
+See `demos/eval/experiments/PLAN.md` for the research questions this
+package is being evaluated against, and per-experiment READMEs for
+results.

@@ -1,490 +1,72 @@
-"""CLI subcommands: init, status, reindex."""
+"""CLI smoke tests."""
 
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-from memory_graph.cli import main as cli_main
-from memory_graph.embed import FakeEmbedder
-from memory_graph.primitives import Store
-from memory_graph.storage import Edge, new_id, write_note
-from memory_graph.storage.files import NOTES_DIRNAME, STORE_DIRNAME
-from memory_graph.storage.note import Note
+from memory_recall.cli import main
 
 
-def _seed_note(store: Path, **fields):
-    note = Note(
-        id=new_id(),
-        title=fields.get("title", "t"),
-        summary=fields.get("summary", "s"),
-        body=fields.get("body", "b"),
-        kind=fields.get("kind", "capture"),
-        status=fields.get("status", "active"),
-        created_at=1, updated_at=1,
-        tags=fields.get("tags", []),
-        edges=fields.get("edges", []),
-    )
-    write_note(store, note)
-    return note
+def test_init_creates_directory(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    rc = main(["init", str(tmp_path)])
+    assert rc == 0
+    assert (tmp_path / ".memory-recall" / "notes").is_dir()
+    assert (tmp_path / ".memory-recall" / "config.yml").exists()
 
 
-# -- init -------------------------------------------------------------------
+def test_status_outputs_json(tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    # status uses store_root() which walks up from cwd.
+    monkeypatch.chdir(tmp_path)
+    main(["init"])
+    capsys.readouterr()  # clear
 
+    # Swap in fake embedder before status (avoids loading FastEmbed).
+    from memory_recall import cli, embed
 
-def test_init_creates_directories(tmp_path: Path, capsys: pytest.CaptureFixture):
-    code = cli_main(["init", "--path", str(tmp_path)])
-    assert code == 0
-    root = tmp_path / STORE_DIRNAME
-    assert (root / NOTES_DIRNAME).is_dir()
-    assert (root / "_operator").is_dir()
-    assert (root / "_pending").is_dir()
-    assert (root / "config.yml").exists()
-    out = capsys.readouterr().out
-    assert "Initialized" in out
+    monkeypatch.setattr(embed, "LocalEmbedder", embed.DeterministicFakeEmbedder)
+    monkeypatch.setattr(cli, "store_root", lambda: tmp_path / ".memory-recall")
 
-
-def test_init_refuses_existing(tmp_path: Path, capsys: pytest.CaptureFixture):
-    (tmp_path / STORE_DIRNAME).mkdir()
-    code = cli_main(["init", "--path", str(tmp_path)])
-    assert code == 1
-    err = capsys.readouterr().err
-    assert "Already initialized" in err
-
-
-# -- status -----------------------------------------------------------------
-
-
-def test_status_prints_json(tmp_path: Path, capsys: pytest.CaptureFixture, monkeypatch):
-    cli_main(["init", "--path", str(tmp_path)])
-    capsys.readouterr()  # drop init's output
-
-    # Seed via Store + FakeEmbedder so we don't hit FastEmbed.
-    root = tmp_path / STORE_DIRNAME
-    with Store(root, embedder=FakeEmbedder()) as s:
-        s.capture(title="t", summary="s", body="b", kind="lesson")
-
-    # Patch LocalEmbedder so we don't download the real model.
-    import memory_graph.embed as embed_mod
-
-    monkeypatch.setattr(embed_mod, "LocalEmbedder", lambda *a, **k: FakeEmbedder())
-
-    code = cli_main(["status", "--path", str(tmp_path)])
-    assert code == 0
+    rc = main(["status"])
+    assert rc == 0
     out = capsys.readouterr().out
     data = json.loads(out)
-    assert data["total_nodes"] == 1
-    assert data["by_kind"]["lesson"] == 1
+    assert data["count"] == 0
+    assert data["embedding_dim"] == 384
 
 
-# -- reindex ----------------------------------------------------------------
-
-
-def test_reindex_rebuilds_from_markdown(tmp_path: Path, monkeypatch, capsys):
-    cli_main(["init", "--path", str(tmp_path)])
-    capsys.readouterr()
-
-    root = tmp_path / STORE_DIRNAME
-    # Write two markdown notes directly (simulating a git pull / manual edit).
-    a = _seed_note(root, title="alpha", summary="alpha", body="alpha")
-    b = _seed_note(
-        root, title="beta", summary="beta", body="beta",
-        edges=[Edge(to_id=a.id, type="related")],
-    )
-
-    # Patch LocalEmbedder to avoid the model download in reindex.
-    import memory_graph.embed as embed_mod
-
-    monkeypatch.setattr(embed_mod, "LocalEmbedder", lambda *a, **k: FakeEmbedder())
-
-    code = cli_main(["reindex", "--path", str(tmp_path)])
-    assert code == 0
-
-    # Confirm both notes are now in the DB.
-    with Store(root, embedder=FakeEmbedder()) as s:
-        got_a = s.get(a.id)
-        got_b = s.get(b.id)
-        assert got_a is not None and got_a.title == "alpha"
-        assert got_b is not None
-        assert any(e.to_id == a.id for e in got_b.edges)
-
-
-def test_reindex_errors_when_no_notes_dir(tmp_path: Path, capsys):
-    (tmp_path / STORE_DIRNAME).mkdir()
-    # Don't create notes/ subdir.
-    code = cli_main(["reindex", "--path", str(tmp_path)])
-    assert code == 1
-    err = capsys.readouterr().err
-    assert "no notes directory" in err
-
-
-# -- digest -----------------------------------------------------------------
-
-
-def test_digest_errors_without_transcript(capsys, monkeypatch, tmp_path):
-    monkeypatch.delenv("CLAUDE_TRANSCRIPT_PATH", raising=False)
+def test_register_writes_mcp_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    (tmp_path / STORE_DIRNAME).mkdir()
-    code = cli_main(["digest"])
-    assert code == 2
-    err = capsys.readouterr().err
-    assert "no transcript" in err
+    rc = main(["register"])
+    assert rc == 0
+    cfg = json.loads((tmp_path / ".mcp.json").read_text())
+    assert cfg["mcpServers"]["memory-recall"]["command"] == "memory-recall"
+    assert cfg["mcpServers"]["memory-recall"]["args"] == ["serve"]
 
 
-def test_digest_skips_empty_transcript(tmp_path: Path, capsys, monkeypatch):
-    cli_main(["init", "--path", str(tmp_path)])
-    capsys.readouterr()
+def test_register_idempotency(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    transcript = tmp_path / "empty.txt"
-    transcript.write_text("\n")
-    code = cli_main(["digest", "--transcript", str(transcript)])
-    assert code == 0
-    err = capsys.readouterr().err
-    assert "empty" in err
+    assert main(["register"]) == 0
+    # Second call without --force returns 1.
+    assert main(["register"]) == 1
+    # With --force should succeed.
+    assert main(["register", "--force"]) == 0
 
 
-# -- register / unregister --------------------------------------------------
-
-
-def test_register_writes_project_mcp_json_without_env_by_default(
-    tmp_path: Path, monkeypatch, capsys
-):
-    """Default behavior: no env block in .mcp.json — the MCP server inherits
-    auth from the parent (typically subscription OAuth from `claude /login`)."""
-    fake_bin = tmp_path / "bin" / "memory-graph"
-    fake_bin.parent.mkdir()
-    fake_bin.write_text("#!/bin/sh\necho hi\n")
-    fake_bin.chmod(0o755)
-    # Make sure the env var doesn't leak in.
-    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
-
-    code = cli_main([
-        "register",
-        "--path", str(tmp_path),
-        "--binary", str(fake_bin),
-    ])
-    assert code == 0
-    data = json.loads((tmp_path / ".mcp.json").read_text())
-    entry = data["mcpServers"]["memory-graph"]
-    assert entry["command"] == str(fake_bin.resolve())
-    assert entry["args"] == ["serve"]
-    # No env block at all — important: a baked empty token would override
-    # the inherited token and break auth.
-    assert "env" not in entry, "default register must not write an env block"
-
-
-def test_register_with_token_arg_embeds_it(tmp_path: Path, monkeypatch):
-    fake_bin = tmp_path / "memory-graph"
-    fake_bin.write_text("#!/bin/sh\n")
-    fake_bin.chmod(0o755)
-    code = cli_main([
-        "register",
-        "--path", str(tmp_path),
-        "--token", "FAKE_TOKEN",
-        "--binary", str(fake_bin),
-    ])
-    assert code == 0
-    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
-    assert entry["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "FAKE_TOKEN"
-
-
-def test_register_bake_token_pulls_from_env(tmp_path: Path, monkeypatch):
-    fake_bin = tmp_path / "memory-graph"
-    fake_bin.write_text("#!/bin/sh\n")
-    fake_bin.chmod(0o755)
-    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "ENV_TOKEN")
-    code = cli_main([
-        "register",
-        "--path", str(tmp_path),
-        "--bake-token",
-        "--binary", str(fake_bin),
-    ])
-    assert code == 0
-    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
-    assert entry["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "ENV_TOKEN"
-
-
-def test_register_bake_token_without_env_warns(tmp_path: Path, monkeypatch, capsys):
-    fake_bin = tmp_path / "memory-graph"
-    fake_bin.write_text("#!/bin/sh\n")
-    fake_bin.chmod(0o755)
-    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
-    code = cli_main([
-        "register",
-        "--path", str(tmp_path),
-        "--bake-token",
-        "--binary", str(fake_bin),
-    ])
-    assert code == 0
-    err = capsys.readouterr().err.lower()
-    assert "warning" in err and "no token found" in err
-    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
-    # Empty token written so the user can fill in (or re-run without --bake-token).
-    assert entry["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == ""
-
-
-def test_register_refuses_overwrite_without_force(tmp_path, capsys):
-    fake_bin = tmp_path / "memory-graph"
-    fake_bin.write_text("#!/bin/sh\n")
-    fake_bin.chmod(0o755)
-    # First call seeds the entry.
-    cli_main(["register", "--path", str(tmp_path), "--binary", str(fake_bin)])
-    capsys.readouterr()
-    # Second call should refuse without --force.
-    code = cli_main(["register", "--path", str(tmp_path), "--binary", str(fake_bin)])
-    assert code == 1
-    err = capsys.readouterr().err
-    assert "already registered" in err
-
-
-def test_register_force_overwrites(tmp_path, capsys):
-    fake_bin = tmp_path / "memory-graph"
-    fake_bin.write_text("#!/bin/sh\n")
-    fake_bin.chmod(0o755)
-    cli_main([
-        "register", "--path", str(tmp_path), "--token", "A", "--binary", str(fake_bin),
-    ])
-    capsys.readouterr()
-    code = cli_main([
-        "register", "--path", str(tmp_path), "--token", "B",
-        "--binary", str(fake_bin), "--force",
-    ])
-    assert code == 0
-    data = json.loads((tmp_path / ".mcp.json").read_text())
-    assert data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "B"
-
-
-def test_register_force_can_remove_existing_env_block(tmp_path, capsys):
-    """Re-registering with no token + --force should produce a CLEAN entry
-    (no env block), matching the new default behavior. This is how a user
-    upgrades an old token-baked entry to subscription-OAuth-based auth."""
-    fake_bin = tmp_path / "memory-graph"
-    fake_bin.write_text("#!/bin/sh\n")
-    fake_bin.chmod(0o755)
-    # Seed with an old-style token-baked entry.
-    cli_main([
-        "register", "--path", str(tmp_path),
-        "--token", "OLD_TOKEN", "--binary", str(fake_bin),
-    ])
-    capsys.readouterr()
-    # Re-register without --token and without --bake-token → no env block.
-    code = cli_main([
-        "register", "--path", str(tmp_path),
-        "--binary", str(fake_bin), "--force",
-    ])
-    assert code == 0
-    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
-    assert "env" not in entry
-
-
-def test_register_merges_into_existing_mcp_json(tmp_path, capsys):
-    # Pre-existing .mcp.json with another server.
-    existing = {"mcpServers": {"other-tool": {"command": "other", "args": []}}}
-    (tmp_path / ".mcp.json").write_text(json.dumps(existing))
-
-    fake_bin = tmp_path / "memory-graph"
-    fake_bin.write_text("#!/bin/sh\n")
-    fake_bin.chmod(0o755)
-    code = cli_main([
-        "register", "--path", str(tmp_path), "--token", "T", "--binary", str(fake_bin),
-    ])
-    assert code == 0
-    data = json.loads((tmp_path / ".mcp.json").read_text())
-    # Both servers preserved.
-    assert "memory-graph" in data["mcpServers"]
-    assert "other-tool" in data["mcpServers"]
-
-
-def test_register_no_token_no_env_block_no_warning(tmp_path, capsys, monkeypatch):
-    """The new default: omitting --token / --bake-token produces a clean
-    entry with no env block, and no warning (rely on `claude /login`)."""
-    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
-    fake_bin = tmp_path / "memory-graph"
-    fake_bin.write_text("#!/bin/sh\n")
-    fake_bin.chmod(0o755)
-    code = cli_main([
-        "register", "--path", str(tmp_path), "--binary", str(fake_bin),
-    ])
-    assert code == 0
-    # No warning — the no-env-block path is the recommended default now.
-    err = capsys.readouterr().err
-    assert "warning" not in err.lower()
-    entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
-    assert "env" not in entry
-
-
-def test_register_errors_when_binary_not_found(tmp_path, capsys, monkeypatch):
-    # Override PATH so the binary cannot be found.
-    monkeypatch.setenv("PATH", "/nonexistent-path-only")
-    # Also make sys.executable's sibling not exist.
-    code = cli_main([
-        "register", "--path", str(tmp_path), "--token", "T",
-        "--binary", str(tmp_path / "no-such-binary"),
-    ])
-    # _resolve_binary_path uses Path(explicit).resolve() which doesn't check
-    # existence; the explicit path is trusted. So this should succeed.
-    assert code == 0
-    # Drop the produced file so other tests see a clean dir.
-    (tmp_path / ".mcp.json").unlink()
-
-    # Now omit --binary and clear PATH.
-    code = cli_main(["register", "--path", str(tmp_path), "--token", "T"])
-    # Either succeeds (if sys.executable's sibling exists) or errors with 1.
-    assert code in (0, 1)
-
-
-def test_unregister_removes_entry(tmp_path, capsys):
-    fake_bin = tmp_path / "memory-graph"
-    fake_bin.write_text("#!/bin/sh\n")
-    fake_bin.chmod(0o755)
-    cli_main([
-        "register", "--path", str(tmp_path), "--token", "T", "--binary", str(fake_bin),
-    ])
-    capsys.readouterr()
-    code = cli_main(["unregister", "--path", str(tmp_path)])
-    assert code == 0
-    data = json.loads((tmp_path / ".mcp.json").read_text())
-    assert "memory-graph" not in data.get("mcpServers", {})
-
-
-def test_unregister_idempotent_when_missing(tmp_path, capsys):
-    code = cli_main(["unregister", "--path", str(tmp_path)])
-    assert code == 0
-    err = capsys.readouterr().err
-    assert "does not exist" in err or "not present" in err
-
-
-# -- setup (one-shot bootstrap) --------------------------------------------
-
-
-def _bin(tmp_path: Path) -> Path:
-    p = tmp_path / "memory-graph"
-    p.write_text("#!/bin/sh\n")
-    p.chmod(0o755)
-    return p
-
-
-def test_setup_fresh_project(tmp_path, capsys):
-    """register + init + install-claude-md should all succeed on a fresh dir."""
-    binary = _bin(tmp_path)
-    project = tmp_path / "proj"
-    project.mkdir()
-
-    code = cli_main([
-        "setup", "--path", str(project),
-        "--token", "T", "--binary", str(binary),
-    ])
-    assert code == 0
-    assert (project / ".mcp.json").exists()
-    assert (project / ".memory-graph").is_dir()
-    claude_md = project / "CLAUDE.md"
-    assert claude_md.exists()
-    assert "memory_remember" in claude_md.read_text()
-    out = capsys.readouterr().out
-    assert "(1/3)" in out and "(2/3)" in out and "(3/3)" in out
-    assert "done" in out
-
-
-def test_setup_is_idempotent(tmp_path, capsys):
-    binary = _bin(tmp_path)
-    project = tmp_path / "proj"
-    project.mkdir()
-
-    cli_main([
-        "setup", "--path", str(project),
-        "--token", "T", "--binary", str(binary),
-    ])
-    capsys.readouterr()
-    # Re-run — none of the steps should hard-fail, even though all three
-    # are already done.
-    code = cli_main([
-        "setup", "--path", str(project),
-        "--token", "T", "--binary", str(binary),
-    ])
-    assert code == 0
-    out = capsys.readouterr().out
-    # The output should report soft conditions, not hard failures.
-    assert "already" in out or "current" in out
-
-
-def test_setup_force_replaces_register_entry(tmp_path, capsys):
-    binary = _bin(tmp_path)
-    project = tmp_path / "proj"
-    project.mkdir()
-    cli_main([
-        "setup", "--path", str(project),
-        "--token", "OLD", "--binary", str(binary),
-    ])
-    capsys.readouterr()
-    cli_main([
-        "setup", "--path", str(project),
-        "--token", "NEW", "--binary", str(binary), "--force",
-    ])
-    data = json.loads((project / ".mcp.json").read_text())
-    assert (
-        data["mcpServers"]["memory-graph"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"]
-        == "NEW"
-    )
-
-
-def test_setup_no_token_no_env_block_in_mcp_json(tmp_path, monkeypatch):
-    """Default setup with no token / no --bake-token produces a clean
-    .mcp.json — relies on subscription OAuth from `claude /login`."""
-    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
-    binary = _bin(tmp_path)
-    project = tmp_path / "proj"
-    project.mkdir()
-    code = cli_main([
-        "setup", "--path", str(project), "--binary", str(binary),
-    ])
-    assert code == 0
-    entry = json.loads((project / ".mcp.json").read_text())["mcpServers"]["memory-graph"]
-    assert "env" not in entry
-
-
-def test_setup_skip_flags(tmp_path, capsys):
-    binary = _bin(tmp_path)
-    project = tmp_path / "proj"
-    project.mkdir()
-
-    code = cli_main([
-        "setup", "--path", str(project),
-        "--token", "T", "--binary", str(binary),
-        "--skip-init", "--skip-claude-md",
-    ])
-    assert code == 0
-    # Only register ran.
-    assert (project / ".mcp.json").exists()
-    assert not (project / ".memory-graph").exists()
-    assert not (project / "CLAUDE.md").exists()
-
-
-def test_setup_creates_claude_md_when_missing(tmp_path):
-    binary = _bin(tmp_path)
-    project = tmp_path / "proj"
-    project.mkdir()
-    cli_main([
-        "setup", "--path", str(project),
-        "--token", "T", "--binary", str(binary),
-        "--skip-register", "--skip-init",
-    ])
-    cm = project / "CLAUDE.md"
-    assert cm.exists()
-    assert "memory_remember" in cm.read_text()
-
-
-# -- help and parser smoke --------------------------------------------------
-
-
-def test_cli_help_runs(capsys):
-    with pytest.raises(SystemExit) as exc:
-        cli_main(["--help"])
-    assert exc.value.code == 0
-    out = capsys.readouterr().out
-    for cmd in (
-        "init", "serve", "digest", "reindex", "status",
-        "register", "unregister", "setup", "install-claude-md",
-    ):
-        assert cmd in out
+def test_unregister_removes_entry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".mcp.json").write_text(json.dumps({
+        "mcpServers": {
+            "other": {"command": "x"},
+            "memory-recall": {"command": "memory-recall", "args": ["serve"]},
+        }
+    }))
+    assert main(["unregister"]) == 0
+    cfg = json.loads((tmp_path / ".mcp.json").read_text())
+    assert "memory-recall" not in cfg["mcpServers"]
+    assert "other" in cfg["mcpServers"]

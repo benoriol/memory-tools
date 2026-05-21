@@ -1,0 +1,22 @@
+================================================================
+e01: Realistic baseline replication (30 buggy modules)
+================================================================
+=== e01 ARM: no_memory ===
+  workdir: /tmp/lab-bench/e01-no_memory-20260521-102312
+  phase 1 (investigate) ... 107.3s  cost=$0.2309  scratch_files=1  memory_notes=0
+  phase1 tool calls: {'Agent': 1, 'Glob': 1, 'Read': 30, 'Write': 2, 'Bash': 1}
+  phase 2 (diagnose) ... 29.6s  cost=$0.0540
+  phase2 tool calls: {'Bash': 1, 'Read': 2}
+  score: 29/30  (96.70%)
+=== e01 ARM: with_memory ===
+  workdir: /tmp/lab-bench/e01-with_memory-20260521-102529
+  phase 1 (investigate) ... 189.5s  cost=$0.2743  scratch_files=1  memory_notes=0
+  phase1 tool calls: {'Glob': 1, 'Read': 36, 'Bash': 1, 'Write': 1, 'ToolSearch': 2, 'mcp__memory-graph__memory_capture_batch': 1}
+  phase 2 (diagnose) ... 67.8s  cost=$0.0809
+  phase2 tool calls: {'ToolSearch': 1, 'mcp__memory-graph__memory_retrieve': 1, 'Bash': 2, 'Read': 1}
+  score: 30/30  (100.00%)
+
+FINAL
+  no_memory   29/30  total=$0.2849 (136.9s)  p2=$0.0540
+  with_memory 30/30  total=$0.3552 (257.3s)  p2=$0.0809  notes_p1=0
+  verdict: FAIL  (accuracy_pass=True, cost_pass=False)

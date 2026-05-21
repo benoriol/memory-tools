@@ -1,0 +1,17 @@
+================================================================
+e25: multi-vector vs single-vector vs grep
+================================================================
+
+--- single-vector arm ---
+  recall@1: 56.00%  recall@5: 98.00%  (2.0s)
+
+--- grep arm ---
+  recall@1: 100.00%  recall@5: 100.00%  cost=$1.157  (474.1s)
+
+--- multi-vector arm ---
+  recall@1: 86.00%  recall@5: 100.00%  (471.9s)
+
+FINAL
+  recall@1 gap (multi - single): +30.00%  (>=0.10 to pass: True)
+  recall@5 gap (multi - single): +2.00%  (>=0.05 to pass: False)
+  verdict: PASS

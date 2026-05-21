@@ -1,0 +1,763 @@
+{
+  "multi": {
+    "arm": "multi",
+    "recall_at_1": 0.74,
+    "recall_at_5": 1.0,
+    "subagent_capture_cost_usd": 0.0,
+    "subagent_search_cost_usd": 0.0,
+    "total_cost_usd": 0.0,
+    "total_seconds": 320.9,
+    "per_query": [
+      {
+        "i": 0,
+        "truth_fact": "outbound_breaker",
+        "truth_id": "01KS69K4MSJDRFYE990B8Q1J0H",
+        "ranked": [
+          "01KS69K4MSJDRFYE990B8Q1J0H",
+          "01KS69QZ6WSBCCCGGHJMQG9CBW",
+          "01KS69PKA736V8KC9D0KP83J3T",
+          "01KS69KHKJ2Y0S5QP0K0QNV2SY",
+          "01KS69QW2H72SQQY5WC6GEE3W6"
+        ],
+        "matched_view": "circuit breaker",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 1,
+        "truth_fact": "registry_singleton",
+        "truth_id": "01KS69K8AH5RKX4E2BF99Y18D5",
+        "ranked": [
+          "01KS69K8AH5RKX4E2BF99Y18D5",
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69QFQB4KPQ46GB1SJ65D63",
+          "01KS69QNPNYPQJ9P41A958X1GS",
+          "01KS69PGFRP93PX8PBSBVNRSPA"
+        ],
+        "matched_view": "global singletons",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 2,
+        "truth_fact": "frame_magic_byte",
+        "truth_id": "01KS69KBS7D04NSG0497CYKB5A",
+        "ranked": [
+          "01KS69KBS7D04NSG0497CYKB5A",
+          "01KS69N1WRRNMVA48ADP0ADE1R",
+          "01KS69QJNPB9MCW3EDWYV8FZQX",
+          "01KS69NYT392BFCX56DZTS9474",
+          "01KS69Q2VMVWH60V959N25S56X"
+        ],
+        "matched_view": "How do we identify the beginning of a frame in the wire protocol?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 3,
+        "truth_fact": "cache_ttl",
+        "truth_id": "01KS69KENTDP1NNZDKMJ0CCJDM",
+        "ranked": [
+          "01KS69KENTDP1NNZDKMJ0CCJDM",
+          "01KS69M5AECQ4XECM9A39SMFW2",
+          "01KS69K8AH5RKX4E2BF99Y18D5",
+          "01KS69M0YQGN5YED216DPAND9D",
+          "01KS69NED2JPMZVHXKV8BGNNX8"
+        ],
+        "matched_view": "cache invalidation",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 4,
+        "truth_fact": "transform_plugin",
+        "truth_id": "01KS69KHKJ2Y0S5QP0K0QNV2SY",
+        "ranked": [
+          "01KS69KHKJ2Y0S5QP0K0QNV2SY",
+          "01KS69PWAREXJWWN576BRP2510",
+          "01KS69MVZ5VYF0ZSG8RHN42SV2",
+          "01KS69MHNQJ22DAHWMPH87XWR2",
+          "01KS69PKA736V8KC9D0KP83J3T"
+        ],
+        "matched_view": "contract",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 5,
+        "truth_fact": "dataflow_home_env",
+        "truth_id": "01KS69KMA5MPW9QJ2132NEEJ14",
+        "ranked": [
+          "01KS69KMA5MPW9QJ2132NEEJ14",
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69QNPNYPQJ9P41A958X1GS",
+          "01KS69MHNQJ22DAHWMPH87XWR2",
+          "01KS69QFQB4KPQ46GB1SJ65D63"
+        ],
+        "matched_view": "data directory",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 6,
+        "truth_fact": "ast_walker",
+        "truth_id": "01KS69KQQRNGFG669MT6AE5114",
+        "ranked": [
+          "01KS69KQQRNGFG669MT6AE5114",
+          "01KS69Q2VMVWH60V959N25S56X",
+          "01KS69KENTDP1NNZDKMJ0CCJDM",
+          "01KS69N5EM0BGYYPWMG91M3384",
+          "01KS69QW2H72SQQY5WC6GEE3W6"
+        ],
+        "matched_view": "visitor pattern",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 7,
+        "truth_fact": "retry_max",
+        "truth_id": "01KS69KTV13VK2DT33VFM6XXXQ",
+        "ranked": [
+          "01KS69KTV13VK2DT33VFM6XXXQ",
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69K4MSJDRFYE990B8Q1J0H",
+          "01KS69K8AH5RKX4E2BF99Y18D5",
+          "01KS69PWAREXJWWN576BRP2510"
+        ],
+        "matched_view": "retry limit",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 8,
+        "truth_fact": "metrics_port",
+        "truth_id": "01KS69KXRP44XMHJ29Y2SFCEGN",
+        "ranked": [
+          "01KS69MCAZKA77Y36AK9GCP1VT",
+          "01KS69P1MB7G847YXWQZHQZAYW",
+          "01KS69KXRP44XMHJ29Y2SFCEGN",
+          "01KS69PSMGX808AC863PGFY88V",
+          "01KS69NQX69S0Z2GCJSYPS60RX"
+        ],
+        "matched_view": "network sockets",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 9,
+        "truth_fact": "blake3_chunk",
+        "truth_id": "01KS69M0YQGN5YED216DPAND9D",
+        "ranked": [
+          "01KS69M0YQGN5YED216DPAND9D",
+          "01KS69MHNQJ22DAHWMPH87XWR2",
+          "01KS69QNPNYPQJ9P41A958X1GS",
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69NHWRV9C7819CVJDV8HE8"
+        ],
+        "matched_view": "data integrity",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 10,
+        "truth_fact": "config_reloaded",
+        "truth_id": "01KS69M5AECQ4XECM9A39SMFW2",
+        "ranked": [
+          "01KS69KENTDP1NNZDKMJ0CCJDM",
+          "01KS69M5AECQ4XECM9A39SMFW2",
+          "01KS69NQX69S0Z2GCJSYPS60RX",
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69K8AH5RKX4E2BF99Y18D5"
+        ],
+        "matched_view": "cache invalidation",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 11,
+        "truth_fact": "quota_exceeded",
+        "truth_id": "01KS69M9JTHSBN5VEQPC8B3AX4",
+        "ranked": [
+          "01KS69NB8BG14XS3QKDRJKW3XZ",
+          "01KS69M9JTHSBN5VEQPC8B3AX4",
+          "01KS69KTV13VK2DT33VFM6XXXQ",
+          "01KS69QS392P1KQVKWWBY6XX8Z",
+          "01KS69PP9X9BCH6S7XSW55MPV8"
+        ],
+        "matched_view": "rate limiting duration",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 12,
+        "truth_fact": "transport_pool",
+        "truth_id": "01KS69MCAZKA77Y36AK9GCP1VT",
+        "ranked": [
+          "01KS69MCAZKA77Y36AK9GCP1VT",
+          "01KS69P1MB7G847YXWQZHQZAYW",
+          "01KS69NN847ABKSB4GSQJ8A5NJ",
+          "01KS69QW2H72SQQY5WC6GEE3W6",
+          "01KS69K8AH5RKX4E2BF99Y18D5"
+        ],
+        "matched_view": "socket reuse",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 13,
+        "truth_fact": "priority_levels",
+        "truth_id": "01KS69MEYDFYECE1ZHEGMHQHF3",
+        "ranked": [
+          "01KS69PWAREXJWWN576BRP2510",
+          "01KS69MEYDFYECE1ZHEGMHQHF3",
+          "01KS69PKA736V8KC9D0KP83J3T",
+          "01KS69PZSQ4D4WN6QN0RDSY61Q",
+          "01KS69KTV13VK2DT33VFM6XXXQ"
+        ],
+        "matched_view": "queue",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 14,
+        "truth_fact": "idx2_suffix",
+        "truth_id": "01KS69MHNQJ22DAHWMPH87XWR2",
+        "ranked": [
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69MHNQJ22DAHWMPH87XWR2",
+          "01KS69NV6RK4FJ7V7CR1R0J28G",
+          "01KS69KMA5MPW9QJ2132NEEJ14",
+          "01KS69N5EM0BGYYPWMG91M3384"
+        ],
+        "matched_view": "indexer",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 15,
+        "truth_fact": "audit_trail",
+        "truth_id": "01KS69MMNNTS39TS2TZBCGYN0T",
+        "ranked": [
+          "01KS69QNPNYPQJ9P41A958X1GS",
+          "01KS69MMNNTS39TS2TZBCGYN0T",
+          "01KS69QFQB4KPQ46GB1SJ65D63",
+          "01KS69PDDVZGSAF1RDHQMKH0T6",
+          "01KS69NV6RK4FJ7V7CR1R0J28G"
+        ],
+        "matched_view": "audit entries",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 16,
+        "truth_fact": "max_payload",
+        "truth_id": "01KS69MRRHW95CQHPV5TVNK614",
+        "ranked": [
+          "01KS69MRRHW95CQHPV5TVNK614",
+          "01KS69QW2H72SQQY5WC6GEE3W6",
+          "01KS69M9JTHSBN5VEQPC8B3AX4",
+          "01KS69Q5NQZ5BB9ZA9KTC0TKT5",
+          "01KS69PZSQ4D4WN6QN0RDSY61Q"
+        ],
+        "matched_view": "How large can a single request payload be?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 17,
+        "truth_fact": "di_core",
+        "truth_id": "01KS69MVZ5VYF0ZSG8RHN42SV2",
+        "ranked": [
+          "01KS69MVZ5VYF0ZSG8RHN42SV2",
+          "01KS69KBS7D04NSG0497CYKB5A",
+          "01KS69N1WRRNMVA48ADP0ADE1R",
+          "01KS69PKA736V8KC9D0KP83J3T",
+          "01KS69MCAZKA77Y36AK9GCP1VT"
+        ],
+        "matched_view": "dependency injection",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 18,
+        "truth_fact": "watcher_interval",
+        "truth_id": "01KS69MYTRY4XPTCVH3PW729BE",
+        "ranked": [
+          "01KS69MYTRY4XPTCVH3PW729BE",
+          "01KS69KMA5MPW9QJ2132NEEJ14",
+          "01KS69QBQMBDQGS0NZ4605HYT3",
+          "01KS69Q2VMVWH60V959N25S56X",
+          "01KS69PWAREXJWWN576BRP2510"
+        ],
+        "matched_view": "What is the polling frequency of the filesystem watcher?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 19,
+        "truth_fact": "protocol_revision",
+        "truth_id": "01KS69N1WRRNMVA48ADP0ADE1R",
+        "ranked": [
+          "01KS69N1WRRNMVA48ADP0ADE1R",
+          "01KS69QJNPB9MCW3EDWYV8FZQX",
+          "01KS69NYT392BFCX56DZTS9474",
+          "01KS69KBS7D04NSG0497CYKB5A",
+          "01KS69NV6RK4FJ7V7CR1R0J28G"
+        ],
+        "matched_view": "protocol revision",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 20,
+        "truth_fact": "vermeer_planner",
+        "truth_id": "01KS69N5EM0BGYYPWMG91M3384",
+        "ranked": [
+          "01KS69N5EM0BGYYPWMG91M3384",
+          "01KS69QW2H72SQQY5WC6GEE3W6",
+          "01KS69MEYDFYECE1ZHEGMHQHF3",
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69NV6RK4FJ7V7CR1R0J28G"
+        ],
+        "matched_view": "query planning",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 21,
+        "truth_fact": "compact_tier",
+        "truth_id": "01KS69N8D97HZRR0Z67VWTR3KJ",
+        "ranked": [
+          "01KS69N8D97HZRR0Z67VWTR3KJ",
+          "01KS69QBQMBDQGS0NZ4605HYT3",
+          "01KS69MEYDFYECE1ZHEGMHQHF3",
+          "01KS69PDDVZGSAF1RDHQMKH0T6",
+          "01KS69NED2JPMZVHXKV8BGNNX8"
+        ],
+        "matched_view": "old tier compaction",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 22,
+        "truth_fact": "ratelimit_window",
+        "truth_id": "01KS69NB8BG14XS3QKDRJKW3XZ",
+        "ranked": [
+          "01KS69NB8BG14XS3QKDRJKW3XZ",
+          "01KS69Q5NQZ5BB9ZA9KTC0TKT5",
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69KENTDP1NNZDKMJ0CCJDM",
+          "01KS69QZ6WSBCCCGGHJMQG9CBW"
+        ],
+        "matched_view": "rate limiting duration",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 23,
+        "truth_fact": "shared_lock",
+        "truth_id": "01KS69NED2JPMZVHXKV8BGNNX8",
+        "ranked": [
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69K8AH5RKX4E2BF99Y18D5",
+          "01KS69P4KZNJNGS5V1DVWAAK6B",
+          "01KS69QZ6WSBCCCGGHJMQG9CBW",
+          "01KS69NN847ABKSB4GSQJ8A5NJ"
+        ],
+        "matched_view": "concurrent access",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 24,
+        "truth_fact": "bloom_seed",
+        "truth_id": "01KS69NHWRV9C7819CVJDV8HE8",
+        "ranked": [
+          "01KS69NHWRV9C7819CVJDV8HE8",
+          "01KS69KQQRNGFG669MT6AE5114",
+          "01KS69M0YQGN5YED216DPAND9D",
+          "01KS69KBS7D04NSG0497CYKB5A",
+          "01KS69PZSQ4D4WN6QN0RDSY61Q"
+        ],
+        "matched_view": "hash seed",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 25,
+        "truth_fact": "pool_size",
+        "truth_id": "01KS69NN847ABKSB4GSQJ8A5NJ",
+        "ranked": [
+          "01KS69NN847ABKSB4GSQJ8A5NJ",
+          "01KS69MCAZKA77Y36AK9GCP1VT",
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69PZSQ4D4WN6QN0RDSY61Q",
+          "01KS69NYT392BFCX56DZTS9474"
+        ],
+        "matched_view": "thread pool",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 26,
+        "truth_fact": "telemetry_buffer",
+        "truth_id": "01KS69NQX69S0Z2GCJSYPS60RX",
+        "ranked": [
+          "01KS69NQX69S0Z2GCJSYPS60RX",
+          "01KS69QS392P1KQVKWWBY6XX8Z",
+          "01KS69PWAREXJWWN576BRP2510",
+          "01KS69KXRP44XMHJ29Y2SFCEGN",
+          "01KS69P1MB7G847YXWQZHQZAYW"
+        ],
+        "matched_view": "How are telemetry measurements accumulated before being flushed?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 27,
+        "truth_fact": "schema_v4",
+        "truth_id": "01KS69NV6RK4FJ7V7CR1R0J28G",
+        "ranked": [
+          "01KS69NV6RK4FJ7V7CR1R0J28G",
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69N1WRRNMVA48ADP0ADE1R",
+          "01KS69Q8VN58F1TVK56G5FBEGQ",
+          "01KS69M0YQGN5YED216DPAND9D"
+        ],
+        "matched_view": "How is the format version identified in the catalog file?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 28,
+        "truth_fact": "msgpack_ipc",
+        "truth_id": "01KS69NYT392BFCX56DZTS9474",
+        "ranked": [
+          "01KS69NYT392BFCX56DZTS9474",
+          "01KS69KBS7D04NSG0497CYKB5A",
+          "01KS69QJNPB9MCW3EDWYV8FZQX",
+          "01KS69N1WRRNMVA48ADP0ADE1R",
+          "01KS69NQX69S0Z2GCJSYPS60RX"
+        ],
+        "matched_view": "serialization",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 29,
+        "truth_fact": "connection_fsm",
+        "truth_id": "01KS69P1MB7G847YXWQZHQZAYW",
+        "ranked": [
+          "01KS69P1MB7G847YXWQZHQZAYW",
+          "01KS69K8AH5RKX4E2BF99Y18D5",
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69QZ6WSBCCCGGHJMQG9CBW",
+          "01KS69MCAZKA77Y36AK9GCP1VT"
+        ],
+        "matched_view": "connection states",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 30,
+        "truth_fact": "leader_election",
+        "truth_id": "01KS69P4KZNJNGS5V1DVWAAK6B",
+        "ranked": [
+          "01KS69P4KZNJNGS5V1DVWAAK6B",
+          "01KS69KTV13VK2DT33VFM6XXXQ",
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69PP9X9BCH6S7XSW55MPV8",
+          "01KS69KBS7D04NSG0497CYKB5A"
+        ],
+        "matched_view": "leader election",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 31,
+        "truth_fact": "snapshot_interval",
+        "truth_id": "01KS69P78VTE06YWXZGJ2MJ8BP",
+        "ranked": [
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69QNPNYPQJ9P41A958X1GS",
+          "01KS69MYTRY4XPTCVH3PW729BE",
+          "01KS69MHNQJ22DAHWMPH87XWR2",
+          "01KS69NV6RK4FJ7V7CR1R0J28G"
+        ],
+        "matched_view": "How frequently are state snapshots taken for disaster recovery?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 32,
+        "truth_fact": "auth_jwt",
+        "truth_id": "01KS69PACAGTGQ9RMZP4PFJJ3G",
+        "ranked": [
+          "01KS69PACAGTGQ9RMZP4PFJJ3G",
+          "01KS69M0YQGN5YED216DPAND9D",
+          "01KS69PSMGX808AC863PGFY88V",
+          "01KS69Q2VMVWH60V959N25S56X",
+          "01KS69KBS7D04NSG0497CYKB5A"
+        ],
+        "matched_view": "authentication tokens",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 33,
+        "truth_fact": "log_partition",
+        "truth_id": "01KS69PDDVZGSAF1RDHQMKH0T6",
+        "ranked": [
+          "01KS69Q2VMVWH60V959N25S56X",
+          "01KS69MMNNTS39TS2TZBCGYN0T",
+          "01KS69PDDVZGSAF1RDHQMKH0T6",
+          "01KS69MRRHW95CQHPV5TVNK614",
+          "01KS69M0YQGN5YED216DPAND9D"
+        ],
+        "matched_view": "chunk verification",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 34,
+        "truth_fact": "feature_flag_store",
+        "truth_id": "01KS69PGFRP93PX8PBSBVNRSPA",
+        "ranked": [
+          "01KS69QFQB4KPQ46GB1SJ65D63",
+          "01KS69PGFRP93PX8PBSBVNRSPA",
+          "01KS69M5AECQ4XECM9A39SMFW2",
+          "01KS69K8AH5RKX4E2BF99Y18D5",
+          "01KS69KMA5MPW9QJ2132NEEJ14"
+        ],
+        "matched_view": "feature toggle",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 35,
+        "truth_fact": "deadline_propagation",
+        "truth_id": "01KS69PKA736V8KC9D0KP83J3T",
+        "ranked": [
+          "01KS69PKA736V8KC9D0KP83J3T",
+          "01KS69NYT392BFCX56DZTS9474",
+          "01KS69QW2H72SQQY5WC6GEE3W6",
+          "01KS69P4KZNJNGS5V1DVWAAK6B",
+          "01KS69QZ6WSBCCCGGHJMQG9CBW"
+        ],
+        "matched_view": "How do we communicate time constraints to downstream services in RPC calls?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 36,
+        "truth_fact": "tracing_sampler",
+        "truth_id": "01KS69PP9X9BCH6S7XSW55MPV8",
+        "ranked": [
+          "01KS69PP9X9BCH6S7XSW55MPV8",
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69QNPNYPQJ9P41A958X1GS",
+          "01KS69QS392P1KQVKWWBY6XX8Z",
+          "01KS69N8D97HZRR0Z67VWTR3KJ"
+        ],
+        "matched_view": "tracing",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 37,
+        "truth_fact": "tls_version",
+        "truth_id": "01KS69PSMGX808AC863PGFY88V",
+        "ranked": [
+          "01KS69PSMGX808AC863PGFY88V",
+          "01KS69PACAGTGQ9RMZP4PFJJ3G",
+          "01KS69KBS7D04NSG0497CYKB5A",
+          "01KS69N1WRRNMVA48ADP0ADE1R",
+          "01KS69KENTDP1NNZDKMJ0CCJDM"
+        ],
+        "matched_view": "TLS 1.3",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 38,
+        "truth_fact": "backpressure_queue",
+        "truth_id": "01KS69PWAREXJWWN576BRP2510",
+        "ranked": [
+          "01KS69PWAREXJWWN576BRP2510",
+          "01KS69MEYDFYECE1ZHEGMHQHF3",
+          "01KS69QJNPB9MCW3EDWYV8FZQX",
+          "01KS69PP9X9BCH6S7XSW55MPV8",
+          "01KS69PDDVZGSAF1RDHQMKH0T6"
+        ],
+        "matched_view": "backpressure",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 39,
+        "truth_fact": "shutdown_signal",
+        "truth_id": "01KS69PZSQ4D4WN6QN0RDSY61Q",
+        "ranked": [
+          "01KS69PZSQ4D4WN6QN0RDSY61Q",
+          "01KS69MCAZKA77Y36AK9GCP1VT",
+          "01KS69P1MB7G847YXWQZHQZAYW",
+          "01KS69QW2H72SQQY5WC6GEE3W6",
+          "01KS69QBQMBDQGS0NZ4605HYT3"
+        ],
+        "matched_view": "graceful shutdown",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 40,
+        "truth_fact": "checksum_walker",
+        "truth_id": "01KS69Q2VMVWH60V959N25S56X",
+        "ranked": [
+          "01KS69M0YQGN5YED216DPAND9D",
+          "01KS69Q2VMVWH60V959N25S56X",
+          "01KS69QBQMBDQGS0NZ4605HYT3",
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69MYTRY4XPTCVH3PW729BE"
+        ],
+        "matched_view": "data integrity",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 41,
+        "truth_fact": "geo_routing",
+        "truth_id": "01KS69Q5NQZ5BB9ZA9KTC0TKT5",
+        "ranked": [
+          "01KS69Q5NQZ5BB9ZA9KTC0TKT5",
+          "01KS69QW2H72SQQY5WC6GEE3W6",
+          "01KS69PKA736V8KC9D0KP83J3T",
+          "01KS69PZSQ4D4WN6QN0RDSY61Q",
+          "01KS69KXRP44XMHJ29Y2SFCEGN"
+        ],
+        "matched_view": "What mechanism routes requests based on geographic location?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 42,
+        "truth_fact": "schema_migration",
+        "truth_id": "01KS69Q8VN58F1TVK56G5FBEGQ",
+        "ranked": [
+          "01KS69Q8VN58F1TVK56G5FBEGQ",
+          "01KS69N1WRRNMVA48ADP0ADE1R",
+          "01KS69PSMGX808AC863PGFY88V",
+          "01KS69NV6RK4FJ7V7CR1R0J28G",
+          "01KS69N8D97HZRR0Z67VWTR3KJ"
+        ],
+        "matched_view": "schema migrations",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 43,
+        "truth_fact": "deadlock_detector",
+        "truth_id": "01KS69QBQMBDQGS0NZ4605HYT3",
+        "ranked": [
+          "01KS69QBQMBDQGS0NZ4605HYT3",
+          "01KS69QZ6WSBCCCGGHJMQG9CBW",
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69N5EM0BGYYPWMG91M3384"
+        ],
+        "matched_view": "transaction deadlock",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 44,
+        "truth_fact": "feature_gate_admin",
+        "truth_id": "01KS69QFQB4KPQ46GB1SJ65D63",
+        "ranked": [
+          "01KS69PGFRP93PX8PBSBVNRSPA",
+          "01KS69QFQB4KPQ46GB1SJ65D63",
+          "01KS69K8AH5RKX4E2BF99Y18D5",
+          "01KS69M5AECQ4XECM9A39SMFW2",
+          "01KS69Q8VN58F1TVK56G5FBEGQ"
+        ],
+        "matched_view": "runtime configuration",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 45,
+        "truth_fact": "stream_compression",
+        "truth_id": "01KS69QJNPB9MCW3EDWYV8FZQX",
+        "ranked": [
+          "01KS69QJNPB9MCW3EDWYV8FZQX",
+          "01KS69MYTRY4XPTCVH3PW729BE",
+          "01KS69NB8BG14XS3QKDRJKW3XZ",
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69PZSQ4D4WN6QN0RDSY61Q"
+        ],
+        "matched_view": "streaming protocol",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 46,
+        "truth_fact": "audit_retention",
+        "truth_id": "01KS69QNPNYPQJ9P41A958X1GS",
+        "ranked": [
+          "01KS69NED2JPMZVHXKV8BGNNX8",
+          "01KS69QNPNYPQJ9P41A958X1GS",
+          "01KS69MHNQJ22DAHWMPH87XWR2",
+          "01KS69MMNNTS39TS2TZBCGYN0T",
+          "01KS69PDDVZGSAF1RDHQMKH0T6"
+        ],
+        "matched_view": "storage",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 47,
+        "truth_fact": "metric_cardinality",
+        "truth_id": "01KS69QS392P1KQVKWWBY6XX8Z",
+        "ranked": [
+          "01KS69QS392P1KQVKWWBY6XX8Z",
+          "01KS69MRRHW95CQHPV5TVNK614",
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69KXRP44XMHJ29Y2SFCEGN",
+          "01KS69M9JTHSBN5VEQPC8B3AX4"
+        ],
+        "matched_view": "metric cardinality",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 48,
+        "truth_fact": "request_id_header",
+        "truth_id": "01KS69QW2H72SQQY5WC6GEE3W6",
+        "ranked": [
+          "01KS69PP9X9BCH6S7XSW55MPV8",
+          "01KS69QW2H72SQQY5WC6GEE3W6",
+          "01KS69MMNNTS39TS2TZBCGYN0T",
+          "01KS69PDDVZGSAF1RDHQMKH0T6",
+          "01KS69P4KZNJNGS5V1DVWAAK6B"
+        ],
+        "matched_view": "tracing",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 49,
+        "truth_fact": "circuit_half_open",
+        "truth_id": "01KS69QZ6WSBCCCGGHJMQG9CBW",
+        "ranked": [
+          "01KS69K4MSJDRFYE990B8Q1J0H",
+          "01KS69QZ6WSBCCCGGHJMQG9CBW",
+          "01KS69PKA736V8KC9D0KP83J3T",
+          "01KS69P78VTE06YWXZGJ2MJ8BP",
+          "01KS69KTV13VK2DT33VFM6XXXQ"
+        ],
+        "matched_view": "circuit breaker",
+        "r1": 0,
+        "r5": 1
+      }
+    ]
+  }
+}

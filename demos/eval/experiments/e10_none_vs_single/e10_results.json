@@ -1,0 +1,763 @@
+{
+  "none": {
+    "arm": "none",
+    "score": {
+      "score": 1.0,
+      "hits": 30,
+      "total": 30,
+      "per_question": {
+        "1": {
+          "id": "off_by_one_page",
+          "expected_module": "module_00",
+          "raw": "module_00 \u2014 Page 1 start index is `n * page_size` instead of `(n-1) * page_size`, skipping the first page_size items",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "2": {
+          "id": "retry_off_by_one",
+          "expected_module": "module_01",
+          "raw": "module_01 \u2014 Retry guard `attempts < MAX_ATTEMPTS` prevents the final allowed attempt from executing (should be `<=`)",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "3": {
+          "id": "cache_invalidate_noop",
+          "expected_module": "module_02",
+          "raw": "module_02 \u2014 `invalidate()` builds a list of keys but never actually clears `_store`; entries persist",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "4": {
+          "id": "timeout_wrong_unit",
+          "expected_module": "module_03",
+          "raw": "module_03 \u2014 Passes `timeout_ms` directly to `socket.settimeout()` which expects seconds, making the deadline 1000\u00d7 too large",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "5": {
+          "id": "mutable_default",
+          "expected_module": "module_04",
+          "raw": "module_04 \u2014 `def load(self, overrides={})` uses a mutable dict literal as a default argument, shared across all calls",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "6": {
+          "id": "integer_division_mean",
+          "expected_module": "module_05",
+          "raw": "module_05 \u2014 `return total // len(values)` uses integer floor-division instead of true division, truncating the average",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "7": {
+          "id": "file_not_closed",
+          "expected_module": "module_06",
+          "raw": "module_06 \u2014 File handle is never closed when a `ValueError` is raised mid-write in `write_batch()`",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "8": {
+          "id": "regex_partial",
+          "expected_module": "module_07",
+          "raw": "module_07 \u2014 `PATTERN.match()` checks only the prefix; strings with invalid suffixes (e.g. `\"2024-01-01xyz\"`) are incorrectly accepted",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "9": {
+          "id": "queue_negative_index",
+          "expected_module": "module_08",
+          "raw": "module_08 \u2014 `self.items[len(self.items)]` is an off-by-one error that always raises `IndexError`",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "10": {
+          "id": "dict_keyerror",
+          "expected_module": "module_09",
+          "raw": "module_09 \u2014 `self._data[key]` raises `KeyError` on missing settings instead of returning a default",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "11": {
+          "id": "swapped_args",
+          "expected_module": "module_10",
+          "raw": "module_10 \u2014 `round_trip()` calls the forward C\u2192F conversion twice instead of applying the inverse F\u2192C on the return leg",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "12": {
+          "id": "early_return_skips_cleanup",
+          "expected_module": "module_11",
+          "raw": "module_11 \u2014 `self.errors.clear()` is positioned after `return True` and is therefore unreachable",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "13": {
+          "id": "shallow_alias",
+          "expected_module": "module_12",
+          "raw": "module_12 \u2014 `snapshot()` returns a direct reference to `_data` instead of a copy, so it mutates with the original",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "14": {
+          "id": "zero_division",
+          "expected_module": "module_13",
+          "raw": "module_13 \u2014 `sum(values) / len(values)` raises `ZeroDivisionError` when the input list is empty",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "15": {
+          "id": "tail_empty_n",
+          "expected_module": "module_14",
+          "raw": "module_14 \u2014 `self.items[-0:]` evaluates as `self.items[0:]`, returning the entire buffer instead of zero items",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "16": {
+          "id": "tz_naive",
+          "expected_module": "module_15",
+          "raw": "module_15 \u2014 `datetime.now()` produces a naive (timezone-free) timestamp",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "17": {
+          "id": "boolean_and_vs_or",
+          "expected_module": "module_16",
+          "raw": "module_16 \u2014 Access check uses `or` instead of `and`, granting access when only one of two required conditions is satisfied",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "18": {
+          "id": "range_exclusive",
+          "expected_module": "module_17",
+          "raw": "module_17 \u2014 Range check `lo <= x < hi` excludes the upper endpoint despite documentation claiming an inclusive range",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "19": {
+          "id": "eval_user_input",
+          "expected_module": "module_18",
+          "raw": "module_18 \u2014 `eval(expression, {}, context)` executes arbitrary attacker-controlled strings as Python code",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "20": {
+          "id": "concat_in_loop",
+          "expected_module": "module_19",
+          "raw": "module_19 \u2014 `out += p` inside a loop creates a new string object each iteration, giving O(n\u00b2) scaling",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "21": {
+          "id": "generator_twice",
+          "expected_module": "module_20",
+          "raw": "module_20 \u2014 A single-use generator is exhausted by the first `sum()`, causing the second iteration to yield zero",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "22": {
+          "id": "class_level_list",
+          "expected_module": "module_21",
+          "raw": "module_21 \u2014 `subscribers = []` is a class-level variable, so all instances share the same list",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "23": {
+          "id": "isinstance_wrong_var",
+          "expected_module": "module_22",
+          "raw": "module_22 \u2014 Branch checks `isinstance(payload, list)` but should check `isinstance(envelope, dict)`; the condition can never be true",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "24": {
+          "id": "float_equality",
+          "expected_module": "module_23",
+          "raw": "module_23 \u2014 Uses exact float equality `x == 0.1`, which misses values arbitrarily close due to floating-point representation",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "25": {
+          "id": "race_increment",
+          "expected_module": "module_24",
+          "raw": "module_24 \u2014 `self.value = self.value + 1` is a non-atomic read-modify-write despite claiming thread safety",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "26": {
+          "id": "encoding_mismatch",
+          "expected_module": "module_25",
+          "raw": "module_25 \u2014 Declares `DECLARED_ENCODING = \"utf-8\"` to consumers but opens the file with `encoding=\"utf-16\"`",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "27": {
+          "id": "wrong_magnitude",
+          "expected_module": "module_26",
+          "raw": "module_26 \u2014 `TTL_SECONDS = 86_400_000` is ~1 000 days, roughly four orders of magnitude larger than the \"one hour\" comment claims",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "28": {
+          "id": "fmt_string_args",
+          "expected_module": "module_27",
+          "raw": "module_27 \u2014 `\"code=%d label=%s\" % (label, code)` swaps the two arguments, printing label as the integer and code as the string",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "29": {
+          "id": "missing_default",
+          "expected_module": "module_28",
+          "raw": "module_28 \u2014 `self._parsed[key]` raises `KeyError` on absent keys instead of returning a default value",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "30": {
+          "id": "negative_modulo",
+          "expected_module": "module_29",
+          "raw": "module_29 \u2014 Negative-index wrap-around computes `-((-idx) % size)`, producing negative outputs and breaking the stated `[0, size)` range",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        }
+      }
+    },
+    "phase1": {
+      "usage": {
+        "input_tokens": 8,
+        "cache_creation_input_tokens": 4419,
+        "cache_read_input_tokens": 96059,
+        "output_tokens": 4524,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 4419,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [
+          {
+            "input_tokens": 1,
+            "output_tokens": 4025,
+            "cache_read_input_tokens": 15258,
+            "cache_creation_input_tokens": 492,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 492
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard"
+      },
+      "cost_usd": 0.11388594999999999,
+      "seconds": 89.1,
+      "tool_calls": [
+        "Bash",
+        "Bash",
+        "Bash",
+        "Bash",
+        "Bash",
+        "Bash"
+      ]
+    },
+    "phase2": {
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 5372,
+        "cache_read_input_tokens": 24809,
+        "output_tokens": 2047,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 5372,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [
+          {
+            "input_tokens": 1,
+            "output_tokens": 1208,
+            "cache_read_input_tokens": 13478,
+            "cache_creation_input_tokens": 3225,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 3225
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard"
+      },
+      "cost_usd": 0.12725215,
+      "seconds": 68.5,
+      "tool_calls": [
+        "Agent",
+        "Bash",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read"
+      ]
+    },
+    "phase2_text_tail": "Looking at the agent's analysis (the final listed answers had Q14/Q15 swapped; the analysis section is correct):\n\nQ01: module_00 \u2014 Page 1 start index is `n * page_size` instead of `(n-1) * page_size`, skipping the first page_size items\nQ02: module_01 \u2014 Retry guard `attempts < MAX_ATTEMPTS` prevents the final allowed attempt from executing (should be `<=`)\nQ03: module_02 \u2014 `invalidate()` builds a list of keys but never actually clears `_store`; entries persist\nQ04: module_03 \u2014 Passes `timeout_ms` directly to `socket.settimeout()` which expects seconds, making the deadline 1000\u00d7 too large\nQ05: module_04 \u2014 `def load(self, overrides={})` uses a mutable dict literal as a default argument, shared across all calls\nQ06: module_05 \u2014 `return total // len(values)` uses integer floor-division instead of true division, truncating the average\nQ07: module_06 \u2014 File handle is never closed when a `ValueError` is raised mid-write in `write_batch()`\nQ08: module_07 \u2014 `PATTERN.match()` checks only the prefix; strings with invalid suffixes (e.g. `\"2024-01-01xyz\"`) are incorrectly accepted\nQ09: module_08 \u2014 `self.items[len(self.items)]` is an off-by-one error that always raises `IndexError`\nQ10: module_09 \u2014 `self._data[key]` raises `KeyError` on missing settings instead of returning a default\nQ11: module_10 \u2014 `round_trip()` calls the forward C\u2192F conversion twice instead of applying the inverse F\u2192C on the return leg\nQ12: module_11 \u2014 `self.errors.clear()` is positioned after `return True` and is therefore unreachable\nQ13: module_12 \u2014 `snapshot()` returns a direct reference to `_data` instead of a copy, so it mutates with the original\nQ14: module_13 \u2014 `sum(values) / len(values)` raises `ZeroDivisionError` when the input list is empty\nQ15: module_14 \u2014 `self.items[-0:]` evaluates as `self.items[0:]`, returning the entire buffer instead of zero items\nQ16: module_15 \u2014 `datetime.now()` produces a naive (timezone-free) timestamp\nQ17: module_16 \u2014 Access check uses `or` instead of `and`, granting access when only one of two required conditions is satisfied\nQ18: module_17 \u2014 Range check `lo <= x < hi` excludes the upper endpoint despite documentation claiming an inclusive range\nQ19: module_18 \u2014 `eval(expression, {}, context)` executes arbitrary attacker-controlled strings as Python code\nQ20: module_19 \u2014 `out += p` inside a loop creates a new string object each iteration, giving O(n\u00b2) scaling\nQ21: module_20 \u2014 A single-use generator is exhausted by the first `sum()`, causing the second iteration to yield zero\nQ22: module_21 \u2014 `subscribers = []` is a class-level variable, so all instances share the same list\nQ23: module_22 \u2014 Branch checks `isinstance(payload, list)` but should check `isinstance(envelope, dict)`; the condition can never be true\nQ24: module_23 \u2014 Uses exact float equality `x == 0.1`, which misses values arbitrarily close due to floating-point representation\nQ25: module_24 \u2014 `self.value = self.value + 1` is a non-atomic read-modify-write despite claiming thread safety\nQ26: module_25 \u2014 Declares `DECLARED_ENCODING = \"utf-8\"` to consumers but opens the file with `encoding=\"utf-16\"`\nQ27: module_26 \u2014 `TTL_SECONDS = 86_400_000` is ~1 000 days, roughly four orders of magnitude larger than the \"one hour\" comment claims\nQ28: module_27 \u2014 `\"code=%d label=%s\" % (label, code)` swaps the two arguments, printing label as the integer and code as the string\nQ29: module_28 \u2014 `self._parsed[key]` raises `KeyError` on absent keys instead of returning a default value\nQ30: module_29 \u2014 Negative-index wrap-around computes `-((-idx) % size)`, producing negative outputs and breaking the stated `[0, size)` range",
+    "phase1_inventory": {
+      "files": [],
+      "notes_md_size": 0
+    },
+    "tool_counts_phase1": {
+      "Bash": 6
+    },
+    "tool_counts_phase2": {
+      "Agent": 1,
+      "Bash": 1,
+      "Read": 30
+    },
+    "phase1_cost_usd": 0.11388594999999999,
+    "phase2_cost_usd": 0.12725215,
+    "total_cost_usd": 0.2411381,
+    "total_seconds": 157.6
+  },
+  "single": {
+    "arm": "single",
+    "score": {
+      "score": 1.0,
+      "hits": 30,
+      "total": 30,
+      "per_question": {
+        "1": {
+          "id": "off_by_one_page",
+          "expected_module": "module_00",
+          "raw": "module_00 \u2014 `get_page` uses `start = n * page_size` for a 1-indexed page number, skipping the first `page_size` items when n=1",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "2": {
+          "id": "retry_off_by_one",
+          "expected_module": "module_01",
+          "raw": "module_01 \u2014 `should_retry` uses `<` instead of `<=` against `MAX_ATTEMPTS`, stopping one attempt too early",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "3": {
+          "id": "cache_invalidate_noop",
+          "expected_module": "module_02",
+          "raw": "module_02 \u2014 `invalidate` builds a key list and returns its length but never clears the store, leaving all entries in place",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "4": {
+          "id": "timeout_wrong_unit",
+          "expected_module": "module_03",
+          "raw": "module_03 \u2014 `socket.settimeout` is passed `timeout_ms` (milliseconds) instead of seconds, making the deadline 1000x too large",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "5": {
+          "id": "mutable_default",
+          "expected_module": "module_04",
+          "raw": "module_04 \u2014 `load(self, overrides={})` uses a mutable dict as a default argument, sharing state across calls",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "6": {
+          "id": "integer_division_mean",
+          "expected_module": "module_05",
+          "raw": "module_05 \u2014 `total // len(values)` uses floor division, truncating the mean to an integer instead of a float",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "7": {
+          "id": "file_not_closed",
+          "expected_module": "module_06",
+          "raw": "module_06 \u2014 no `try/finally` around file writes, so the file handle is never closed if an exception is raised mid-write",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "8": {
+          "id": "regex_partial",
+          "expected_module": "module_07",
+          "raw": "module_07 \u2014 `re.match` is used instead of `re.fullmatch`, so strings that merely start with a valid date prefix pass validation",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "9": {
+          "id": "queue_negative_index",
+          "expected_module": "module_08",
+          "raw": "module_08 \u2014 `peek_last` accesses `self.items[len(self.items)]`, which is always out of range, raising IndexError",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "10": {
+          "id": "dict_keyerror",
+          "expected_module": "module_09",
+          "raw": "module_09 \u2014 `lookup` uses direct dict indexing (`self._data[key]`), raising KeyError for any key that was never written",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "11": {
+          "id": "swapped_args",
+          "expected_module": "module_10",
+          "raw": "module_10 \u2014 `round_trip` calls `self.convert(f, 0)` to reverse F\u2192C, but this re-applies the forward (C\u2192F) formula instead of reversing it",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "12": {
+          "id": "early_return_skips_cleanup",
+          "expected_module": "module_11",
+          "raw": "module_11 \u2014 `self.errors.clear()` is placed after `return True`, making it unreachable dead code",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "13": {
+          "id": "shallow_alias",
+          "expected_module": "module_12",
+          "raw": "module_12 \u2014 `snapshot` returns `self._data` directly (a reference), so the snapshot mutates whenever the original dict changes",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "14": {
+          "id": "zero_division",
+          "expected_module": "module_13",
+          "raw": "module_13 \u2014 `compute` calls `sum(values) / len(values)` with no empty-list guard, raising ZeroDivisionError on empty input",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "15": {
+          "id": "tail_empty_n",
+          "expected_module": "module_14",
+          "raw": "module_14 \u2014 `tail(0)` evaluates `self.items[-0:]` which equals `self.items[0:]`, returning the entire buffer instead of an empty list",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "16": {
+          "id": "tz_naive",
+          "expected_module": "module_15",
+          "raw": "module_15 \u2014 `datetime.now()` produces a naive timestamp with no timezone information",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "17": {
+          "id": "boolean_and_vs_or",
+          "expected_module": "module_16",
+          "raw": "module_16 \u2014 `can_access` uses `or` instead of `and`, granting access when only one of the two required conditions (admin AND in-org) is met",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "18": {
+          "id": "range_exclusive",
+          "expected_module": "module_17",
+          "raw": "module_17 \u2014 `contains` uses `self.lo <= x < self.hi`, making the upper bound exclusive despite the docstring promising an inclusive range",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "19": {
+          "id": "eval_user_input",
+          "expected_module": "module_18",
+          "raw": "module_18 \u2014 `evaluate` calls Python's built-in `eval()` on a user-supplied string, enabling arbitrary code execution",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "20": {
+          "id": "concat_in_loop",
+          "expected_module": "module_19",
+          "raw": "module_19 \u2014 string concatenation with `+=` inside a loop creates a new string each iteration, scaling quadratically with input size",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "21": {
+          "id": "generator_twice",
+          "expected_module": "module_20",
+          "raw": "module_20 \u2014 `self.items` is consumed by `sum()` on the first pass; the second pass over the exhausted generator always returns 0",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "22": {
+          "id": "class_level_list",
+          "expected_module": "module_21",
+          "raw": "module_21 \u2014 `subscribers = []` is a class-level attribute, so all `Subscription` instances share the same list",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "23": {
+          "id": "isinstance_wrong_var",
+          "expected_module": "module_22",
+          "raw": "module_22 \u2014 the second `isinstance` check tests `payload` again instead of `envelope`, making one branch unreachable under its intended condition",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "24": {
+          "id": "float_equality",
+          "expected_module": "module_23",
+          "raw": "module_23 \u2014 `x == 0.1` uses exact floating-point equality, missing values that are mathematically equal to 0.1 due to IEEE-754 representation",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "25": {
+          "id": "race_increment",
+          "expected_module": "module_24",
+          "raw": "module_24 \u2014 `self.value = self.value + 1` is a non-atomic read-modify-write, creating a race condition despite being documented as thread-safe",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "26": {
+          "id": "encoding_mismatch",
+          "expected_module": "module_25",
+          "raw": "module_25 \u2014 `DECLARED_ENCODING = \"utf-8\"` but the file is opened with `encoding=\"utf-16\"`, mismatching what consumers expect",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "27": {
+          "id": "wrong_magnitude",
+          "expected_module": "module_26",
+          "raw": "module_26 \u2014 `TTL_SECONDS = 86400000` is ~1000 days, roughly four orders of magnitude larger than the comment's claim of \"one hour\"",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "28": {
+          "id": "fmt_string_args",
+          "expected_module": "module_27",
+          "raw": "module_27 \u2014 `\"code=%d label=%s\" % (label, code)` passes the arguments in the wrong order, swapping the string and integer",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "29": {
+          "id": "missing_default",
+          "expected_module": "module_28",
+          "raw": "module_28 \u2014 `get` uses `self._parsed[key]` direct indexing, raising KeyError for absent keys instead of returning a default",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        },
+        "30": {
+          "id": "negative_modulo",
+          "expected_module": "module_29",
+          "raw": "module_29 \u2014 `-((-idx) % self.size)` returns a negative number for negative inputs (e.g. -1 instead of 4), breaking the stated non-negative range",
+          "module_hit": true,
+          "keyword_hit": true,
+          "ok": true
+        }
+      }
+    },
+    "phase1": {
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 2894,
+        "cache_read_input_tokens": 24267,
+        "output_tokens": 598,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2894,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [
+          {
+            "input_tokens": 1,
+            "output_tokens": 346,
+            "cache_read_input_tokens": 12936,
+            "cache_creation_input_tokens": 1289,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 1289
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard"
+      },
+      "cost_usd": 0.1941867,
+      "seconds": 97.6,
+      "tool_calls": [
+        "Agent",
+        "Bash",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Read",
+        "Write"
+      ]
+    },
+    "phase2": {
+      "usage": {
+        "input_tokens": 6,
+        "cache_creation_input_tokens": 5323,
+        "cache_read_input_tokens": 66290,
+        "output_tokens": 2038,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 5323,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [
+          {
+            "input_tokens": 1,
+            "output_tokens": 1748,
+            "cache_read_input_tokens": 13945,
+            "cache_creation_input_tokens": 2709,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2709
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard"
+      },
+      "cost_usd": 0.07180525,
+      "seconds": 43.7,
+      "tool_calls": [
+        "Read",
+        "Bash",
+        "Read",
+        "Read"
+      ]
+    },
+    "phase2_text_tail": "Q01: module_00 \u2014 `get_page` uses `start = n * page_size` for a 1-indexed page number, skipping the first `page_size` items when n=1\nQ02: module_01 \u2014 `should_retry` uses `<` instead of `<=` against `MAX_ATTEMPTS`, stopping one attempt too early\nQ03: module_02 \u2014 `invalidate` builds a key list and returns its length but never clears the store, leaving all entries in place\nQ04: module_03 \u2014 `socket.settimeout` is passed `timeout_ms` (milliseconds) instead of seconds, making the deadline 1000x too large\nQ05: module_04 \u2014 `load(self, overrides={})` uses a mutable dict as a default argument, sharing state across calls\nQ06: module_05 \u2014 `total // len(values)` uses floor division, truncating the mean to an integer instead of a float\nQ07: module_06 \u2014 no `try/finally` around file writes, so the file handle is never closed if an exception is raised mid-write\nQ08: module_07 \u2014 `re.match` is used instead of `re.fullmatch`, so strings that merely start with a valid date prefix pass validation\nQ09: module_08 \u2014 `peek_last` accesses `self.items[len(self.items)]`, which is always out of range, raising IndexError\nQ10: module_09 \u2014 `lookup` uses direct dict indexing (`self._data[key]`), raising KeyError for any key that was never written\nQ11: module_10 \u2014 `round_trip` calls `self.convert(f, 0)` to reverse F\u2192C, but this re-applies the forward (C\u2192F) formula instead of reversing it\nQ12: module_11 \u2014 `self.errors.clear()` is placed after `return True`, making it unreachable dead code\nQ13: module_12 \u2014 `snapshot` returns `self._data` directly (a reference), so the snapshot mutates whenever the original dict changes\nQ14: module_13 \u2014 `compute` calls `sum(values) / len(values)` with no empty-list guard, raising ZeroDivisionError on empty input\nQ15: module_14 \u2014 `tail(0)` evaluates `self.items[-0:]` which equals `self.items[0:]`, returning the entire buffer instead of an empty list\nQ16: module_15 \u2014 `datetime.now()` produces a naive timestamp with no timezone information\nQ17: module_16 \u2014 `can_access` uses `or` instead of `and`, granting access when only one of the two required conditions (admin AND in-org) is met\nQ18: module_17 \u2014 `contains` uses `self.lo <= x < self.hi`, making the upper bound exclusive despite the docstring promising an inclusive range\nQ19: module_18 \u2014 `evaluate` calls Python's built-in `eval()` on a user-supplied string, enabling arbitrary code execution\nQ20: module_19 \u2014 string concatenation with `+=` inside a loop creates a new string each iteration, scaling quadratically with input size\nQ21: module_20 \u2014 `self.items` is consumed by `sum()` on the first pass; the second pass over the exhausted generator always returns 0\nQ22: module_21 \u2014 `subscribers = []` is a class-level attribute, so all `Subscription` instances share the same list\nQ23: module_22 \u2014 the second `isinstance` check tests `payload` again instead of `envelope`, making one branch unreachable under its intended condition\nQ24: module_23 \u2014 `x == 0.1` uses exact floating-point equality, missing values that are mathematically equal to 0.1 due to IEEE-754 representation\nQ25: module_24 \u2014 `self.value = self.value + 1` is a non-atomic read-modify-write, creating a race condition despite being documented as thread-safe\nQ26: module_25 \u2014 `DECLARED_ENCODING = \"utf-8\"` but the file is opened with `encoding=\"utf-16\"`, mismatching what consumers expect\nQ27: module_26 \u2014 `TTL_SECONDS = 86400000` is ~1000 days, roughly four orders of magnitude larger than the comment's claim of \"one hour\"\nQ28: module_27 \u2014 `\"code=%d label=%s\" % (label, code)` passes the arguments in the wrong order, swapping the string and integer\nQ29: module_28 \u2014 `get` uses `self._parsed[key]` direct indexing, raising KeyError for absent keys instead of returning a default\nQ30: module_29 \u2014 `-((-idx) % self.size)` returns a negative number for negative inputs (e.g. -1 instead of 4), breaking the stated non-negative range",
+    "phase1_inventory": {
+      "files": [
+        {
+          "name": "NOTES.md",
+          "size_bytes": 8357,
+          "lines": 121
+        }
+      ],
+      "notes_md_size": 8357
+    },
+    "tool_counts_phase1": {
+      "Agent": 1,
+      "Bash": 1,
+      "Read": 30,
+      "Write": 1
+    },
+    "tool_counts_phase2": {
+      "Read": 3,
+      "Bash": 1
+    },
+    "phase1_cost_usd": 0.1941867,
+    "phase2_cost_usd": 0.07180525,
+    "total_cost_usd": 0.26599195,
+    "total_seconds": 141.3
+  }
+}

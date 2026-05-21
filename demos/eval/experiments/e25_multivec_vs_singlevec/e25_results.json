@@ -1,0 +1,763 @@
+{
+  "multi": {
+    "arm": "multi",
+    "recall_at_1": 0.92,
+    "recall_at_5": 1.0,
+    "subagent_capture_cost_usd": 0.0,
+    "subagent_search_cost_usd": 0.0,
+    "total_cost_usd": 0.0,
+    "total_seconds": 470.5,
+    "per_query": [
+      {
+        "i": 0,
+        "truth_fact": "outbound_breaker",
+        "truth_id": "01KS69X25S7JTY9HRVJC95DFMM",
+        "ranked": [
+          "01KS69X25S7JTY9HRVJC95DFMM",
+          "01KS6A4QMBBGJVPSD9Z23QY5BY",
+          "01KS6A2G9MVQTS8WN321F7K2R0",
+          "01KS6A2YN016P5P3TH38FBB6EY",
+          "01KS6A4JSFA97WB7E675V1W9FP"
+        ],
+        "matched_view": "circuit breaker",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 1,
+        "truth_fact": "registry_singleton",
+        "truth_id": "01KS69X77JQJ94S97T4EWJ24EV",
+        "ranked": [
+          "01KS69X77JQJ94S97T4EWJ24EV",
+          "01KS69ZX7ACENN02MEM7AH18MJ",
+          "01KS6A41YBDE6JCZX24Q1Z8Q6Q",
+          "01KS6A4JSFA97WB7E675V1W9FP",
+          "01KS6A0PXA60GE7BP7HF31N5GX"
+        ],
+        "matched_view": "global singletons",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 2,
+        "truth_fact": "frame_magic_byte",
+        "truth_id": "01KS69XBQDHR9YQRF4DS1S44WD",
+        "ranked": [
+          "01KS69XBQDHR9YQRF4DS1S44WD",
+          "01KS6A04G7TNFJC5RW6MRVPRHX",
+          "01KS6A4JSFA97WB7E675V1W9FP",
+          "01KS6A1BV1E2VVFCP22AT9RD82",
+          "01KS6A2YN016P5P3TH38FBB6EY"
+        ],
+        "matched_view": "How do we identify the start of a serialized frame in the binary protocol?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 3,
+        "truth_fact": "cache_ttl",
+        "truth_id": "01KS69XFTKQ100PKZESB8M33BE",
+        "ranked": [
+          "01KS69XFTKQ100PKZESB8M33BE",
+          "01KS69YK8VY3CVGM28C82GCGY1",
+          "01KS6A0DPQ3QNW6WAWFYRZE62C",
+          "01KS6A4A3A5S2X2KCPVREPEJ0K",
+          "01KS6A2CASBXMPNT954315SPD0"
+        ],
+        "matched_view": "cache TTL",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 4,
+        "truth_fact": "transform_plugin",
+        "truth_id": "01KS69XKZTX4N5NH6YEFBPBX01",
+        "ranked": [
+          "01KS6A32ZXEP3YCVEQST8C577H",
+          "01KS69XKZTX4N5NH6YEFBPBX01",
+          "01KS6A04G7TNFJC5RW6MRVPRHX",
+          "01KS6A2YN016P5P3TH38FBB6EY",
+          "01KS69ZX7ACENN02MEM7AH18MJ"
+        ],
+        "matched_view": "ingest pipeline",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 5,
+        "truth_fact": "dataflow_home_env",
+        "truth_id": "01KS69XQVNQVMVFD1RGBVS9B86",
+        "ranked": [
+          "01KS69XQVNQVMVFD1RGBVS9B86",
+          "01KS6A4A3A5S2X2KCPVREPEJ0K",
+          "01KS6A41YBDE6JCZX24Q1Z8Q6Q",
+          "01KS69Z65QFWE284VEM4NXB9A8",
+          "01KS6A0PXA60GE7BP7HF31N5GX"
+        ],
+        "matched_view": "data directory",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 6,
+        "truth_fact": "ast_walker",
+        "truth_id": "01KS69XVYPGB1C0701K4NZ4P1K",
+        "ranked": [
+          "01KS69XVYPGB1C0701K4NZ4P1K",
+          "01KS6A3DCR2MSQ7Y78APMFBCAP",
+          "01KS6A08R9GG6174W3V1EEVEV9",
+          "01KS6A22D342HT9FH1XDGPCJJC",
+          "01KS6A17TNN4WHH2EYDDYG83TF"
+        ],
+        "matched_view": "visitor pattern",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 7,
+        "truth_fact": "retry_max",
+        "truth_id": "01KS69Y5W7FEBJD1ME6ER4E25F",
+        "ranked": [
+          "01KS69Y5W7FEBJD1ME6ER4E25F",
+          "01KS6A1SAR8CZBB41BV3TEEPC5",
+          "01KS69X25S7JTY9HRVJC95DFMM",
+          "01KS69YRK69GSQRSN36B8DRE1R",
+          "01KS6A0HPW4S147XFHGWFK0NQB"
+        ],
+        "matched_view": "retry limit",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 8,
+        "truth_fact": "metrics_port",
+        "truth_id": "01KS69YA74EATDZSYDYFCKYGXA",
+        "ranked": [
+          "01KS69YXEMWXYQ98TN6FBW0BJW",
+          "01KS6A1GJFXWT16JDXEYV92M9C",
+          "01KS69YA74EATDZSYDYFCKYGXA",
+          "01KS6A13EFCNK0EECSVWFNSQ80",
+          "01KS6A4EGG3HHM5Q168995H371"
+        ],
+        "matched_view": "reusable sockets",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 9,
+        "truth_fact": "blake3_chunk",
+        "truth_id": "01KS69YE730T4J7NCWER9PWP8V",
+        "ranked": [
+          "01KS69YE730T4J7NCWER9PWP8V",
+          "01KS69Z65QFWE284VEM4NXB9A8",
+          "01KS6A3DCR2MSQ7Y78APMFBCAP",
+          "01KS6A0PXA60GE7BP7HF31N5GX",
+          "01KS6A0V56PSQFETJKZMCN3VRQ"
+        ],
+        "matched_view": "integrity check",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 10,
+        "truth_fact": "config_reloaded",
+        "truth_id": "01KS69YK8VY3CVGM28C82GCGY1",
+        "ranked": [
+          "01KS69YK8VY3CVGM28C82GCGY1",
+          "01KS69XFTKQ100PKZESB8M33BE",
+          "01KS6A13EFCNK0EECSVWFNSQ80",
+          "01KS6A1GJFXWT16JDXEYV92M9C",
+          "01KS69YE730T4J7NCWER9PWP8V"
+        ],
+        "matched_view": "cache invalidation",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 11,
+        "truth_fact": "quota_exceeded",
+        "truth_id": "01KS69YRK69GSQRSN36B8DRE1R",
+        "ranked": [
+          "01KS69YRK69GSQRSN36B8DRE1R",
+          "01KS6A0HPW4S147XFHGWFK0NQB",
+          "01KS6A32ZXEP3YCVEQST8C577H",
+          "01KS69ZRAB2W1YNMJABXZK1W89",
+          "01KS69Y5W7FEBJD1ME6ER4E25F"
+        ],
+        "matched_view": "rate limiting",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 12,
+        "truth_fact": "transport_pool",
+        "truth_id": "01KS69YXEMWXYQ98TN6FBW0BJW",
+        "ranked": [
+          "01KS69YXEMWXYQ98TN6FBW0BJW",
+          "01KS6A1GJFXWT16JDXEYV92M9C",
+          "01KS6A0YZN3DCAMZ0KBAJ4ENJ1",
+          "01KS69X77JQJ94S97T4EWJ24EV",
+          "01KS69X25S7JTY9HRVJC95DFMM"
+        ],
+        "matched_view": "connection pool",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 13,
+        "truth_fact": "priority_levels",
+        "truth_id": "01KS69Z1E14RXST9YJJ8PRNHSN",
+        "ranked": [
+          "01KS69Z1E14RXST9YJJ8PRNHSN",
+          "01KS6A32ZXEP3YCVEQST8C577H",
+          "01KS69Y5W7FEBJD1ME6ER4E25F",
+          "01KS6A0DPQ3QNW6WAWFYRZE62C",
+          "01KS6A0YZN3DCAMZ0KBAJ4ENJ1"
+        ],
+        "matched_view": "How many priority levels does the scheduler queue support?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 14,
+        "truth_fact": "idx2_suffix",
+        "truth_id": "01KS69Z65QFWE284VEM4NXB9A8",
+        "ranked": [
+          "01KS69Z65QFWE284VEM4NXB9A8",
+          "01KS6A17TNN4WHH2EYDDYG83TF",
+          "01KS6A0PXA60GE7BP7HF31N5GX",
+          "01KS6A3QS5N0HPVEN4RGJWA1TK",
+          "01KS6A08R9GG6174W3V1EEVEV9"
+        ],
+        "matched_view": "index file extension",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 15,
+        "truth_fact": "audit_trail",
+        "truth_id": "01KS69ZAEF8SCAAK3S7HHBJ1ES",
+        "ranked": [
+          "01KS69ZAEF8SCAAK3S7HHBJ1ES",
+          "01KS6A4A3A5S2X2KCPVREPEJ0K",
+          "01KS6A41YBDE6JCZX24Q1Z8Q6Q",
+          "01KS6A17TNN4WHH2EYDDYG83TF",
+          "01KS6A22D342HT9FH1XDGPCJJC"
+        ],
+        "matched_view": "audit logging",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 16,
+        "truth_fact": "max_payload",
+        "truth_id": "01KS69ZRAB2W1YNMJABXZK1W89",
+        "ranked": [
+          "01KS69ZRAB2W1YNMJABXZK1W89",
+          "01KS6A4JSFA97WB7E675V1W9FP",
+          "01KS6A1BV1E2VVFCP22AT9RD82",
+          "01KS6A37B5GDRKD64HJJ5E430D",
+          "01KS6A32ZXEP3YCVEQST8C577H"
+        ],
+        "matched_view": "The maximum allowed size for any single request body is 1,048,576 bytes (1 MiB).",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 17,
+        "truth_fact": "di_core",
+        "truth_id": "01KS69ZX7ACENN02MEM7AH18MJ",
+        "ranked": [
+          "01KS69ZX7ACENN02MEM7AH18MJ",
+          "01KS69X77JQJ94S97T4EWJ24EV",
+          "01KS6A04G7TNFJC5RW6MRVPRHX",
+          "01KS6A2G9MVQTS8WN321F7K2R0",
+          "01KS6A2CASBXMPNT954315SPD0"
+        ],
+        "matched_view": "dependency injection",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 18,
+        "truth_fact": "watcher_interval",
+        "truth_id": "01KS6A00WMK04EW3VHGWFEBVB6",
+        "ranked": [
+          "01KS6A00WMK04EW3VHGWFEBVB6",
+          "01KS69XQVNQVMVFD1RGBVS9B86",
+          "01KS6A2CASBXMPNT954315SPD0",
+          "01KS6A1MS6D7MTD1MYFWTD0XY8",
+          "01KS69XFTKQ100PKZESB8M33BE"
+        ],
+        "matched_view": "polling interval",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 19,
+        "truth_fact": "protocol_revision",
+        "truth_id": "01KS6A04G7TNFJC5RW6MRVPRHX",
+        "ranked": [
+          "01KS6A04G7TNFJC5RW6MRVPRHX",
+          "01KS6A1BV1E2VVFCP22AT9RD82",
+          "01KS6A2YN016P5P3TH38FBB6EY",
+          "01KS69XBQDHR9YQRF4DS1S44WD",
+          "01KS6A17TNN4WHH2EYDDYG83TF"
+        ],
+        "matched_view": "protocol version",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 20,
+        "truth_fact": "vermeer_planner",
+        "truth_id": "01KS6A08R9GG6174W3V1EEVEV9",
+        "ranked": [
+          "01KS6A08R9GG6174W3V1EEVEV9",
+          "01KS6A0PXA60GE7BP7HF31N5GX",
+          "01KS6A17TNN4WHH2EYDDYG83TF",
+          "01KS6A2G9MVQTS8WN321F7K2R0",
+          "01KS6A1SAR8CZBB41BV3TEEPC5"
+        ],
+        "matched_view": "What is the internal codename for the experimental query planner?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 21,
+        "truth_fact": "compact_tier",
+        "truth_id": "01KS6A0DPQ3QNW6WAWFYRZE62C",
+        "ranked": [
+          "01KS6A0DPQ3QNW6WAWFYRZE62C",
+          "01KS6A3WPY8KJBKN3QRCFJGE55",
+          "01KS6A22D342HT9FH1XDGPCJJC",
+          "01KS69YE730T4J7NCWER9PWP8V",
+          "01KS6A3DCR2MSQ7Y78APMFBCAP"
+        ],
+        "matched_view": "compaction routine",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 22,
+        "truth_fact": "ratelimit_window",
+        "truth_id": "01KS6A0HPW4S147XFHGWFK0NQB",
+        "ranked": [
+          "01KS69YRK69GSQRSN36B8DRE1R",
+          "01KS6A0HPW4S147XFHGWFK0NQB",
+          "01KS6A32ZXEP3YCVEQST8C577H",
+          "01KS6A2RDAAF3BEEXR04SWY06C",
+          "01KS6A2CASBXMPNT954315SPD0"
+        ],
+        "matched_view": "rate limiting",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 23,
+        "truth_fact": "shared_lock",
+        "truth_id": "01KS6A0PXA60GE7BP7HF31N5GX",
+        "ranked": [
+          "01KS6A0PXA60GE7BP7HF31N5GX",
+          "01KS6A3WPY8KJBKN3QRCFJGE55",
+          "01KS6A3QS5N0HPVEN4RGJWA1TK",
+          "01KS69ZX7ACENN02MEM7AH18MJ",
+          "01KS6A0YZN3DCAMZ0KBAJ4ENJ1"
+        ],
+        "matched_view": "shared lock",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 24,
+        "truth_fact": "bloom_seed",
+        "truth_id": "01KS6A0V56PSQFETJKZMCN3VRQ",
+        "ranked": [
+          "01KS6A0V56PSQFETJKZMCN3VRQ",
+          "01KS69YE730T4J7NCWER9PWP8V",
+          "01KS69XBQDHR9YQRF4DS1S44WD",
+          "01KS6A1Y0RH2Z3NDGBEJFX6JK7",
+          "01KS6A4EGG3HHM5Q168995H371"
+        ],
+        "matched_view": "bloom filter",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 25,
+        "truth_fact": "pool_size",
+        "truth_id": "01KS6A0YZN3DCAMZ0KBAJ4ENJ1",
+        "ranked": [
+          "01KS6A0YZN3DCAMZ0KBAJ4ENJ1",
+          "01KS6A0PXA60GE7BP7HF31N5GX",
+          "01KS69YXEMWXYQ98TN6FBW0BJW",
+          "01KS69Z1E14RXST9YJJ8PRNHSN",
+          "01KS6A3WPY8KJBKN3QRCFJGE55"
+        ],
+        "matched_view": "thread pool",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 26,
+        "truth_fact": "telemetry_buffer",
+        "truth_id": "01KS6A13EFCNK0EECSVWFNSQ80",
+        "ranked": [
+          "01KS6A13EFCNK0EECSVWFNSQ80",
+          "01KS69YA74EATDZSYDYFCKYGXA",
+          "01KS6A4EGG3HHM5Q168995H371",
+          "01KS6A32ZXEP3YCVEQST8C577H",
+          "01KS69YK8VY3CVGM28C82GCGY1"
+        ],
+        "matched_view": "What data structure buffers metrics prior to flushing?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 27,
+        "truth_fact": "schema_v4",
+        "truth_id": "01KS6A17TNN4WHH2EYDDYG83TF",
+        "ranked": [
+          "01KS6A17TNN4WHH2EYDDYG83TF",
+          "01KS6A3QS5N0HPVEN4RGJWA1TK",
+          "01KS6A04G7TNFJC5RW6MRVPRHX",
+          "01KS6A4EGG3HHM5Q168995H371",
+          "01KS6A4A3A5S2X2KCPVREPEJ0K"
+        ],
+        "matched_view": "What format version does the persisted catalog file declare?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 28,
+        "truth_fact": "msgpack_ipc",
+        "truth_id": "01KS6A1BV1E2VVFCP22AT9RD82",
+        "ranked": [
+          "01KS6A1BV1E2VVFCP22AT9RD82",
+          "01KS6A45T65B5TPD6KK7H0YN98",
+          "01KS69XBQDHR9YQRF4DS1S44WD",
+          "01KS6A04G7TNFJC5RW6MRVPRHX",
+          "01KS69Z65QFWE284VEM4NXB9A8"
+        ],
+        "matched_view": "inter-process communication",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 29,
+        "truth_fact": "connection_fsm",
+        "truth_id": "01KS6A1GJFXWT16JDXEYV92M9C",
+        "ranked": [
+          "01KS6A1GJFXWT16JDXEYV92M9C",
+          "01KS69YXEMWXYQ98TN6FBW0BJW",
+          "01KS6A4QMBBGJVPSD9Z23QY5BY",
+          "01KS6A1SAR8CZBB41BV3TEEPC5",
+          "01KS69X25S7JTY9HRVJC95DFMM"
+        ],
+        "matched_view": "state transitions",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 30,
+        "truth_fact": "leader_election",
+        "truth_id": "01KS6A1MS6D7MTD1MYFWTD0XY8",
+        "ranked": [
+          "01KS6A1MS6D7MTD1MYFWTD0XY8",
+          "01KS6A2YN016P5P3TH38FBB6EY",
+          "01KS6A04G7TNFJC5RW6MRVPRHX",
+          "01KS69Y5W7FEBJD1ME6ER4E25F",
+          "01KS6A4QMBBGJVPSD9Z23QY5BY"
+        ],
+        "matched_view": "leader election",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 31,
+        "truth_fact": "snapshot_interval",
+        "truth_id": "01KS6A1SAR8CZBB41BV3TEEPC5",
+        "ranked": [
+          "01KS6A1SAR8CZBB41BV3TEEPC5",
+          "01KS6A13EFCNK0EECSVWFNSQ80",
+          "01KS6A22D342HT9FH1XDGPCJJC",
+          "01KS6A4A3A5S2X2KCPVREPEJ0K",
+          "01KS6A17TNN4WHH2EYDDYG83TF"
+        ],
+        "matched_view": "snapshot interval",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 32,
+        "truth_fact": "auth_jwt",
+        "truth_id": "01KS6A1Y0RH2Z3NDGBEJFX6JK7",
+        "ranked": [
+          "01KS6A1Y0RH2Z3NDGBEJFX6JK7",
+          "01KS69YE730T4J7NCWER9PWP8V",
+          "01KS6A3DCR2MSQ7Y78APMFBCAP",
+          "01KS6A2YN016P5P3TH38FBB6EY",
+          "01KS6A4JSFA97WB7E675V1W9FP"
+        ],
+        "matched_view": "digital signature",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 33,
+        "truth_fact": "log_partition",
+        "truth_id": "01KS6A22D342HT9FH1XDGPCJJC",
+        "ranked": [
+          "01KS6A22D342HT9FH1XDGPCJJC",
+          "01KS69YE730T4J7NCWER9PWP8V",
+          "01KS6A3DCR2MSQ7Y78APMFBCAP",
+          "01KS69ZAEF8SCAAK3S7HHBJ1ES",
+          "01KS69ZRAB2W1YNMJABXZK1W89"
+        ],
+        "matched_view": "write-ahead log",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 34,
+        "truth_fact": "feature_flag_store",
+        "truth_id": "01KS6A2CASBXMPNT954315SPD0",
+        "ranked": [
+          "01KS6A2CASBXMPNT954315SPD0",
+          "01KS6A41YBDE6JCZX24Q1Z8Q6Q",
+          "01KS69ZAEF8SCAAK3S7HHBJ1ES",
+          "01KS6A1GJFXWT16JDXEYV92M9C",
+          "01KS69ZX7ACENN02MEM7AH18MJ"
+        ],
+        "matched_view": "feature flags",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 35,
+        "truth_fact": "deadline_propagation",
+        "truth_id": "01KS6A2G9MVQTS8WN321F7K2R0",
+        "ranked": [
+          "01KS6A2G9MVQTS8WN321F7K2R0",
+          "01KS6A4JSFA97WB7E675V1W9FP",
+          "01KS6A4QMBBGJVPSD9Z23QY5BY",
+          "01KS69Z1E14RXST9YJJ8PRNHSN",
+          "01KS6A1BV1E2VVFCP22AT9RD82"
+        ],
+        "matched_view": "timeout propagation",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 36,
+        "truth_fact": "tracing_sampler",
+        "truth_id": "01KS6A2RDAAF3BEEXR04SWY06C",
+        "ranked": [
+          "01KS6A2RDAAF3BEEXR04SWY06C",
+          "01KS6A4JSFA97WB7E675V1W9FP",
+          "01KS69XQVNQVMVFD1RGBVS9B86",
+          "01KS6A13EFCNK0EECSVWFNSQ80",
+          "01KS6A32ZXEP3YCVEQST8C577H"
+        ],
+        "matched_view": "trace sampling",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 37,
+        "truth_fact": "tls_version",
+        "truth_id": "01KS6A2YN016P5P3TH38FBB6EY",
+        "ranked": [
+          "01KS6A2YN016P5P3TH38FBB6EY",
+          "01KS6A04G7TNFJC5RW6MRVPRHX",
+          "01KS69YXEMWXYQ98TN6FBW0BJW",
+          "01KS6A1Y0RH2Z3NDGBEJFX6JK7",
+          "01KS69ZRAB2W1YNMJABXZK1W89"
+        ],
+        "matched_view": "TLS 1.3",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 38,
+        "truth_fact": "backpressure_queue",
+        "truth_id": "01KS6A32ZXEP3YCVEQST8C577H",
+        "ranked": [
+          "01KS6A32ZXEP3YCVEQST8C577H",
+          "01KS69YRK69GSQRSN36B8DRE1R",
+          "01KS6A0HPW4S147XFHGWFK0NQB",
+          "01KS6A45T65B5TPD6KK7H0YN98",
+          "01KS69Y5W7FEBJD1ME6ER4E25F"
+        ],
+        "matched_view": "backpressure",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 39,
+        "truth_fact": "shutdown_signal",
+        "truth_id": "01KS6A37B5GDRKD64HJJ5E430D",
+        "ranked": [
+          "01KS6A37B5GDRKD64HJJ5E430D",
+          "01KS69X77JQJ94S97T4EWJ24EV",
+          "01KS6A4JSFA97WB7E675V1W9FP",
+          "01KS69YK8VY3CVGM28C82GCGY1",
+          "01KS69YXEMWXYQ98TN6FBW0BJW"
+        ],
+        "matched_view": "graceful shutdown",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 40,
+        "truth_fact": "checksum_walker",
+        "truth_id": "01KS6A3DCR2MSQ7Y78APMFBCAP",
+        "ranked": [
+          "01KS69YE730T4J7NCWER9PWP8V",
+          "01KS6A3DCR2MSQ7Y78APMFBCAP",
+          "01KS6A3WPY8KJBKN3QRCFJGE55",
+          "01KS69YK8VY3CVGM28C82GCGY1",
+          "01KS69Z1E14RXST9YJJ8PRNHSN"
+        ],
+        "matched_view": "integrity check",
+        "r1": 0,
+        "r5": 1
+      },
+      {
+        "i": 41,
+        "truth_fact": "geo_routing",
+        "truth_id": "01KS6A3HYC5SBEYC2EMHFDRTBT",
+        "ranked": [
+          "01KS6A3HYC5SBEYC2EMHFDRTBT",
+          "01KS6A45T65B5TPD6KK7H0YN98",
+          "01KS6A4JSFA97WB7E675V1W9FP",
+          "01KS6A2G9MVQTS8WN321F7K2R0",
+          "01KS69YXEMWXYQ98TN6FBW0BJW"
+        ],
+        "matched_view": "What mechanism is used to direct traffic based on a client's location?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 42,
+        "truth_fact": "schema_migration",
+        "truth_id": "01KS6A3QS5N0HPVEN4RGJWA1TK",
+        "ranked": [
+          "01KS6A3QS5N0HPVEN4RGJWA1TK",
+          "01KS6A17TNN4WHH2EYDDYG83TF",
+          "01KS6A2YN016P5P3TH38FBB6EY",
+          "01KS6A04G7TNFJC5RW6MRVPRHX",
+          "01KS6A0DPQ3QNW6WAWFYRZE62C"
+        ],
+        "matched_view": "database migrations",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 43,
+        "truth_fact": "deadlock_detector",
+        "truth_id": "01KS6A3WPY8KJBKN3QRCFJGE55",
+        "ranked": [
+          "01KS6A3WPY8KJBKN3QRCFJGE55",
+          "01KS6A0PXA60GE7BP7HF31N5GX",
+          "01KS6A3QS5N0HPVEN4RGJWA1TK",
+          "01KS69X77JQJ94S97T4EWJ24EV",
+          "01KS6A37B5GDRKD64HJJ5E430D"
+        ],
+        "matched_view": "deadlock cycle",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 44,
+        "truth_fact": "feature_gate_admin",
+        "truth_id": "01KS6A41YBDE6JCZX24Q1Z8Q6Q",
+        "ranked": [
+          "01KS6A41YBDE6JCZX24Q1Z8Q6Q",
+          "01KS6A2CASBXMPNT954315SPD0",
+          "01KS6A32ZXEP3YCVEQST8C577H",
+          "01KS69ZX7ACENN02MEM7AH18MJ",
+          "01KS69XQVNQVMVFD1RGBVS9B86"
+        ],
+        "matched_view": "runtime configuration",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 45,
+        "truth_fact": "stream_compression",
+        "truth_id": "01KS6A45T65B5TPD6KK7H0YN98",
+        "ranked": [
+          "01KS6A45T65B5TPD6KK7H0YN98",
+          "01KS69ZRAB2W1YNMJABXZK1W89",
+          "01KS6A32ZXEP3YCVEQST8C577H",
+          "01KS69YRK69GSQRSN36B8DRE1R",
+          "01KS6A0HPW4S147XFHGWFK0NQB"
+        ],
+        "matched_view": "compression level 3",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 46,
+        "truth_fact": "audit_retention",
+        "truth_id": "01KS6A4A3A5S2X2KCPVREPEJ0K",
+        "ranked": [
+          "01KS6A4A3A5S2X2KCPVREPEJ0K",
+          "01KS69ZAEF8SCAAK3S7HHBJ1ES",
+          "01KS6A0PXA60GE7BP7HF31N5GX",
+          "01KS6A22D342HT9FH1XDGPCJJC",
+          "01KS69YE730T4J7NCWER9PWP8V"
+        ],
+        "matched_view": "How long are audit logs kept on disk before archival?",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 47,
+        "truth_fact": "metric_cardinality",
+        "truth_id": "01KS6A4EGG3HHM5Q168995H371",
+        "ranked": [
+          "01KS6A4EGG3HHM5Q168995H371",
+          "01KS69YA74EATDZSYDYFCKYGXA",
+          "01KS6A2YN016P5P3TH38FBB6EY",
+          "01KS6A32ZXEP3YCVEQST8C577H",
+          "01KS6A08R9GG6174W3V1EEVEV9"
+        ],
+        "matched_view": "cardinality cap",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 48,
+        "truth_fact": "request_id_header",
+        "truth_id": "01KS6A4JSFA97WB7E675V1W9FP",
+        "ranked": [
+          "01KS6A4JSFA97WB7E675V1W9FP",
+          "01KS6A2RDAAF3BEEXR04SWY06C",
+          "01KS6A3HYC5SBEYC2EMHFDRTBT",
+          "01KS6A22D342HT9FH1XDGPCJJC",
+          "01KS69ZAEF8SCAAK3S7HHBJ1ES"
+        ],
+        "matched_view": "request tracing",
+        "r1": 1,
+        "r5": 1
+      },
+      {
+        "i": 49,
+        "truth_fact": "circuit_half_open",
+        "truth_id": "01KS6A4QMBBGJVPSD9Z23QY5BY",
+        "ranked": [
+          "01KS6A4QMBBGJVPSD9Z23QY5BY",
+          "01KS69Y5W7FEBJD1ME6ER4E25F",
+          "01KS6A2CASBXMPNT954315SPD0",
+          "01KS6A1GJFXWT16JDXEYV92M9C",
+          "01KS69X25S7JTY9HRVJC95DFMM"
+        ],
+        "matched_view": "half-open state",
+        "r1": 1,
+        "r5": 1
+      }
+    ]
+  }
+}

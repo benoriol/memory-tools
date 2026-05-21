@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>memory-recall</title>
+<style>
+  :root {
+    --fg: #111;
+    --muted: #666;
+    --bg: #fff;
+    --line: #ddd;
+    --accent: #0a66c2;
+    --hit-bg: #eef5fc;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, sans-serif; color: var(--fg); }
+  header {
+    display: flex; gap: 1rem; align-items: center;
+    padding: 0.6rem 1rem; border-bottom: 1px solid var(--line);
+  }
+  header h1 { margin: 0; font-size: 1.1rem; }
+  #search {
+    flex: 1; padding: 0.5rem 0.7rem; font-size: 1rem;
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  #status { color: var(--muted); font-size: 0.85rem; }
+  main { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 56px); }
+  #list-pane { border-right: 1px solid var(--line); overflow-y: auto; }
+  #expanded {
+    padding: 0.6rem 1rem; background: #fafafa; border-bottom: 1px solid var(--line);
+    font-size: 0.85rem; color: var(--muted);
+  }
+  #expanded .label { font-weight: 600; color: var(--fg); }
+  .note-row {
+    padding: 0.7rem 1rem; border-bottom: 1px solid var(--line); cursor: pointer;
+  }
+  .note-row.active { background: var(--hit-bg); }
+  .note-row .title { font-weight: 600; }
+  .note-row .summary { font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem; }
+  .note-row .meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.3rem; }
+  .score-pill {
+    display: inline-block; background: var(--accent); color: white;
+    border-radius: 8px; padding: 0 0.5rem; font-size: 0.75rem; margin-right: 0.4rem;
+  }
+  #right-pane { display: flex; flex-direction: column; }
+  #tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .tab {
+    padding: 0.5rem 1rem; cursor: pointer; border-right: 1px solid var(--line);
+    font-size: 0.9rem;
+  }
+  .tab.active { background: var(--hit-bg); font-weight: 600; }
+  #tab-body { flex: 1; overflow: auto; padding: 1rem; }
+  #cluster-plot { width: 100%; height: 100%; }
+  #detail-body h2 { margin: 0 0 0.5rem 0; }
+  #detail-body .views { margin-top: 1rem; }
+  #detail-body .view {
+    padding: 0.3rem 0; border-bottom: 1px dotted var(--line);
+    font-size: 0.85rem;
+  }
+  #detail-body .view .kind {
+    color: var(--accent); font-weight: 600; margin-right: 0.5rem;
+  }
+  pre { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>memory-recall</h1>
+  <input id="search" placeholder="Search memory..." />
+  <span id="status">loading...</span>
+</header>
+<main>
+  <div id="list-pane">
+    <div id="expanded" style="display:none"></div>
+    <div id="list"></div>
+  </div>
+  <div id="right-pane">
+    <div id="tabs">
+      <div class="tab active" data-tab="cluster">Cluster</div>
+      <div class="tab" data-tab="detail">Detail</div>
+    </div>
+    <div id="tab-body">
+      <div id="cluster-tab"><div id="cluster-plot"></div></div>
+      <div id="detail-tab" style="display:none">
+        <div id="detail-body">Select a note from the list or the cluster plot.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script>
+let allNotes = [];
+let currentRanked = null;
+let selectedId = null;
+
+const $ = (sel) => document.querySelector(sel);
+
+async function loadNotes() {
+  const res = await fetch("/api/notes");
+  const data = await res.json();
+  allNotes = data.notes;
+  renderList(allNotes.map(n => ({...n, score: null, matched_view: null})));
+  renderCluster(allNotes);
+  const st = await (await fetch("/api/status")).json();
+  $("#status").textContent = `${st.count} notes · ${st.embedding_model}`;
+}
+
+function renderList(rows) {
+  const el = $("#list");
+  el.innerHTML = "";
+  for (const r of rows) {
+    const div = document.createElement("div");
+    div.className = "note-row" + (r.id === selectedId ? " active" : "");
+    div.dataset.id = r.id;
+    const score = (r.score !== null && r.score !== undefined)
+      ? `<span class="score-pill">${r.score.toFixed(3)}</span>` : "";
+    const matched = r.matched_view ? `<div class="meta">matched: ${escapeHtml(r.matched_view)}</div>` : "";
+    div.innerHTML = `
+      <div class="title">${score}${escapeHtml(r.title || "(untitled)")}</div>
+      <div class="summary">${escapeHtml(r.summary || "")}</div>
+      <div class="meta">${(r.tags || []).map(t => "#" + escapeHtml(t)).join(" ")}</div>
+      ${matched}
+    `;
+    div.onclick = () => selectNote(r.id);
+    el.appendChild(div);
+  }
+}
+
+function renderCluster(notes) {
+  const xs = notes.map(n => n.embedding_2d[0]);
+  const ys = notes.map(n => n.embedding_2d[1]);
+  const labels = notes.map(n => n.title);
+  const ids = notes.map(n => n.id);
+  const trace = {
+    x: xs, y: ys, text: labels, customdata: ids,
+    mode: "markers", type: "scatter",
+    hovertemplate: "%{text}<extra></extra>",
+    marker: { size: 10, color: "#0a66c2", opacity: 0.7 },
+  };
+  Plotly.newPlot("cluster-plot", [trace], {
+    margin: { t: 10, l: 30, r: 10, b: 30 },
+    xaxis: { showgrid: false, zeroline: false },
+    yaxis: { showgrid: false, zeroline: false },
+  }, { displayModeBar: false, responsive: true });
+  $("#cluster-plot").on("plotly_click", (e) => {
+    const id = e.points[0].customdata;
+    selectNote(id);
+  });
+}
+
+async function selectNote(id) {
+  selectedId = id;
+  document.querySelectorAll(".note-row").forEach(r => {
+    r.classList.toggle("active", r.dataset.id === id);
+  });
+  const res = await fetch(`/api/notes/${id}`);
+  if (!res.ok) return;
+  const n = await res.json();
+  const views = (n.views || []).map(v =>
+    `<div class="view"><span class="kind">${v.kind}</span>${escapeHtml(v.text)}</div>`
+  ).join("");
+  $("#detail-body").innerHTML = `
+    <h2>${escapeHtml(n.title)}</h2>
+    <div class="meta">${(n.tags || []).map(t => "#" + escapeHtml(t)).join(" ")}</div>
+    <p><b>Summary.</b> ${escapeHtml(n.summary)}</p>
+    <pre>${escapeHtml(n.body)}</pre>
+    <div class="views"><b>Views</b>${views}</div>
+  `;
+  showTab("detail");
+}
+
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.tab === name);
+  });
+  $("#cluster-tab").style.display = name === "cluster" ? "block" : "none";
+  $("#detail-tab").style.display = name === "detail" ? "block" : "none";
+}
+
+document.querySelectorAll(".tab").forEach(t => {
+  t.onclick = () => showTab(t.dataset.tab);
+});
+
+async function doSearch(q) {
+  const res = await fetch("/api/search", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ query: q, k: 20 }),
+  });
+  const data = await res.json();
+  const ex = data.expanded;
+  $("#expanded").style.display = "block";
+  $("#expanded").innerHTML = `
+    <div><span class="label">keywords:</span> ${(ex.keywords || []).map(escapeHtml).join(", ")}</div>
+    <div><span class="label">paraphrases:</span> ${(ex.paraphrases || []).map(escapeHtml).join(" | ")}</div>
+  `;
+  currentRanked = data.results;
+  renderList(currentRanked);
+}
+
+$("#search").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const q = e.target.value.trim();
+    if (q) doSearch(q);
+    else { $("#expanded").style.display = "none"; renderList(allNotes); }
+  }
+});
+
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[ch]));
+}
+
+loadNotes();
+</script>
+</body>
+</html>

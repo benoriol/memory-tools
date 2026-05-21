@@ -1,0 +1,8 @@
+================================================================
+e01b: Same task, explicit memory schema in prompt
+================================================================
+=== e01b ARM: no_memory ===
+  workdir: /tmp/lab-bench/e01b-no_memory-20260521-103406
+  phase 1 (investigate) ... 528.1s  cost=$0.8133  scratch_files=2  memory_notes=0
+  phase1 tool calls: {'ToolSearch': 4, 'Glob': 1, 'Read': 36, 'Bash': 20}
+  phase 2 (diagnose) ... 
