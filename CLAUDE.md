@@ -22,10 +22,6 @@ not at every session boundary. Keep short (a few hundred tokens).
   FastAPI+plotly viz, e25 benchmark family. Package is installed
   user-wide via `pipx install -e .`, so edits in `src/` go live
   immediately.
-- **Active design work**: locking in the project-context tier. An
-  earlier `SCRATCH.md` experiment was scrapped — regular
-  conversation context already plays the scratchpad role; this
-  section in CLAUDE.md is the replacement.
 - **Bootstrap parity restored**: `memory-recall setup` (and
   `install-claude-md` / `uninstall-claude-md`) ported from the old
   `memory-graph` tooling. The CLAUDE.md operator-guidance template
@@ -40,10 +36,11 @@ not at every session boundary. Keep short (a few hundred tokens).
 - **Replication owed**: single-run Sonnet-thinking-off recall@1
   swing (86% → 92% on 50 queries) is at the edge of noise. One
   more run would tighten the conclusion.
-- **Triage owed**: untracked artifacts under
-  `demos/eval/progressive/` and `demos/eval/results/` are
-  pre-shipping exploration — decide whether to delete or move
-  under `attic/`.
+- **Triage owed**: untracked artifacts — `demos/eval/progressive/`
+  (generate.py, run_progression.py) plus `demos/eval/results/`
+  (hardcase / holistic-haiku-low / retrieval-haiku-low /
+  progressive-* JSON files, plus a `lab/` subdir) are pre-shipping
+  exploration. Decide whether to delete or move under `attic/`.
 
 ---
 
@@ -74,7 +71,9 @@ At the **start** of every session:
 
 - For findings worth keeping permanently (architectural facts, bug
   root-causes, contracts with external systems): call
-  `memory_capture(content)` to store them in long-term memory.
+  `memory_capture(content, tags?)` to store them in long-term
+  memory. The sub-agent auto-generates 0–3 topical tags; pass
+  `tags=[...]` only if you want to add extras (they're merged).
 - For recall: prefer `memory_retrieve_candidates(query)` first;
   call `memory_get(ids=[...])` (batched) only for candidates whose
   summaries suggest the body has what you need.
@@ -138,11 +137,15 @@ src/memory_recall/
 ├── store.py        capture + multi-vector search
 ├── subagent.py     capture/search sub-agent (Sonnet, no thinking)
 ├── server.py       FastMCP server (5 tools)
-├── cli.py          init / serve / status / viz / register / unregister
+├── cli.py          init / serve / status / viz / register /
+│                   unregister / install-claude-md /
+│                   uninstall-claude-md / setup
 ├── viz/            FastAPI + plotly viz
-└── prompts/        capture.md, search.md
+├── prompts/        capture.md, search.md
+└── templates/      CLAUDE.md operator-guidance section
 
 demos/eval/
-├── experiments/    benchmarks (e10, e25, e25b, ...) + PLAN.md
-└── lab/            exploratory scratch from earlier iterations (B1–B11)
+├── experiments/    benchmarks (e01–e06, e10, e25, e25b) + PLAN.md
+└── lab/            exploratory scratch from earlier iterations
+                    (b2–b11; no b1)
 ```
