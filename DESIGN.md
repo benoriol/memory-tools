@@ -76,7 +76,7 @@ Total: 5. No graph tools.
 |------|---------|
 | `memory_capture(content, tags?)` | Hand off raw text to the capture sub-agent. Returns `{id, summary, views: [..]}`. |
 | `memory_retrieve_candidates(query, k=10)` | **STEP 1 of recall.** Open-ended query → sub-agent expansion → top-k candidate summaries (`{id, summary, score, matched_view}`, no body). |
-| `memory_get(id)` | **STEP 2 of recall.** Fetch full body of a chosen candidate. |
+| `memory_get(ids)` | **STEP 2 of recall.** Fetch full bodies of one or more chosen candidates in a single batched call. |
 | `memory_list(limit=100, offset=0)` | Browse all notes (paginated). |
 | `memory_status()` | Summary stats: count, embedding model, recent activity. |
 

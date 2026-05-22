@@ -70,3 +70,117 @@ def test_unregister_removes_entry(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     cfg = json.loads((tmp_path / ".mcp.json").read_text())
     assert "memory-recall" not in cfg["mcpServers"]
     assert "other" in cfg["mcpServers"]
+
+
+def test_install_claude_md_creates_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    rc = main(["install-claude-md"])
+    assert rc == 0
+    text = (tmp_path / "CLAUDE.md").read_text()
+    assert "<!-- BEGIN memory-recall -->" in text
+    assert "<!-- END memory-recall -->" in text
+    assert "Long-term memory" in text
+
+
+def test_install_claude_md_appends_to_existing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "CLAUDE.md").write_text("# project rules\n\nsome content\n")
+    rc = main(["install-claude-md"])
+    assert rc == 0
+    text = (tmp_path / "CLAUDE.md").read_text()
+    assert text.startswith("# project rules\n\nsome content\n")
+    assert "<!-- BEGIN memory-recall -->" in text
+    assert text.endswith("<!-- END memory-recall -->\n")
+
+
+def test_install_claude_md_idempotency(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert main(["install-claude-md"]) == 0
+    # Re-run without --force returns 1.
+    assert main(["install-claude-md"]) == 1
+    # With --force replaces (count stays at one).
+    assert main(["install-claude-md", "--force"]) == 0
+    text = (tmp_path / "CLAUDE.md").read_text()
+    assert text.count("<!-- BEGIN memory-recall -->") == 1
+    assert text.count("<!-- END memory-recall -->") == 1
+
+
+def test_install_claude_md_force_replaces_content(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "CLAUDE.md").write_text(
+        "# rules\n\n<!-- BEGIN memory-recall -->\nOLD CONTENT\n<!-- END memory-recall -->\n\nafter\n"
+    )
+    rc = main(["install-claude-md", "--force"])
+    assert rc == 0
+    text = (tmp_path / "CLAUDE.md").read_text()
+    assert "OLD CONTENT" not in text
+    assert "# rules" in text
+    assert "after" in text
+    assert text.count("<!-- BEGIN memory-recall -->") == 1
+
+
+def test_uninstall_claude_md_removes_section(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "CLAUDE.md").write_text(
+        "# rules\n\n<!-- BEGIN memory-recall -->\nbody\n<!-- END memory-recall -->\n\nafter\n"
+    )
+    rc = main(["uninstall-claude-md"])
+    assert rc == 0
+    text = (tmp_path / "CLAUDE.md").read_text()
+    assert "memory-recall" not in text
+    assert "# rules" in text
+    assert "after" in text
+
+
+def test_uninstall_claude_md_no_section(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "CLAUDE.md").write_text("# just rules\n")
+    rc = main(["uninstall-claude-md"])
+    assert rc == 0
+    assert (tmp_path / "CLAUDE.md").read_text() == "# just rules\n"
+
+
+def test_uninstall_claude_md_no_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    rc = main(["uninstall-claude-md"])
+    assert rc == 0
+
+
+def test_setup_fresh_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    rc = main(["setup"])
+    assert rc == 0
+    assert (tmp_path / ".mcp.json").exists()
+    assert (tmp_path / ".memory-recall" / "notes").is_dir()
+    text = (tmp_path / "CLAUDE.md").read_text()
+    assert "<!-- BEGIN memory-recall -->" in text
+
+
+def test_setup_idempotent_rerun(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert main(["setup"]) == 0
+    # Re-run on fully set-up project still exits 0.
+    assert main(["setup"]) == 0
+    text = (tmp_path / "CLAUDE.md").read_text()
+    assert text.count("<!-- BEGIN memory-recall -->") == 1
+
+
+def test_setup_skip_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    rc = main(["setup", "--skip-register", "--skip-claude-md"])
+    assert rc == 0
+    assert not (tmp_path / ".mcp.json").exists()
+    assert not (tmp_path / "CLAUDE.md").exists()
+    assert (tmp_path / ".memory-recall" / "notes").is_dir()
+
+
+def test_setup_force_replaces_claude_md(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "CLAUDE.md").write_text(
+        "<!-- BEGIN memory-recall -->\nOLD\n<!-- END memory-recall -->\n"
+    )
+    rc = main(["setup", "--force"])
+    assert rc == 0
+    text = (tmp_path / "CLAUDE.md").read_text()
+    assert "OLD" not in text
+    assert "Long-term memory" in text

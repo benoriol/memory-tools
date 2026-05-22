@@ -1,162 +1,148 @@
-# memory-graph-mcp
+# memory-recall
 
-Per-project graph memory for Claude Code. Notes are markdown +
-YAML frontmatter; SQLite is a derived index; sub-agents spawned via
-the Agent SDK do the smart work; the main agent calls three tools
-(`memory_remember`, `memory_retrieve`, `memory_compact`) plus 10
-lower-level primitives.
+Per-project multi-vector memory for Claude Code, exposed as an MCP
+server with a visualization UI. See `README.md` for the user-facing
+description and `DESIGN.md` for the architecture spec.
 
-Read `README.md` for architecture and `docs/INSTALL.md` for the full
-walkthrough. This file is the operator's quick-reference for working
-on this repo and bootstrapping the tool into other projects.
+This file is the operator's quick-reference: how the memory tiers
+compose, the conventions a Claude Code session should follow when
+working in this repo, and the **Current project context** section
+below — small, curated, must-know state that survives `/clear`.
+
+---
+
+## Current project context
+
+Mutable. Holds the things you must know *right now* to be useful in
+this repo. Updated deliberately when something material shifts —
+not at every session boundary. Keep short (a few hundred tokens).
+
+- **Shipped state**: commit `3d74346` replaced the old graph
+  approach with `memory_recall` — multi-vector MCP, 5 tools,
+  FastAPI+plotly viz, e25 benchmark family. Package is installed
+  user-wide via `pipx install -e .`, so edits in `src/` go live
+  immediately.
+- **Active design work**: locking in the project-context tier. An
+  earlier `SCRATCH.md` experiment was scrapped — regular
+  conversation context already plays the scratchpad role; this
+  section in CLAUDE.md is the replacement.
+- **Bootstrap parity restored**: `memory-recall setup` (and
+  `install-claude-md` / `uninstall-claude-md`) ported from the old
+  `memory-graph` tooling. The CLAUDE.md operator-guidance template
+  lives at `src/memory_recall/templates/claude_md_section.md`.
+- **`memory_get` now batched**: signature is `memory_get(ids: list[str])`
+  returning a list (None for misses) so multiple bodies can be
+  fetched in a single MCP round-trip.
+- **Known measurement gap**: sub-agent cost reporting in `e25b`
+  prints $0.00. Need to plumb `ResultMessage.total_cost_usd`
+  through `expand_for_capture` / `expand_for_search` before the
+  Sonnet-vs-Haiku cost trade-off can be measured properly.
+- **Replication owed**: single-run Sonnet-thinking-off recall@1
+  swing (86% → 92% on 50 queries) is at the edge of noise. One
+  more run would tighten the conclusion.
+- **Triage owed**: untracked artifacts under
+  `demos/eval/progressive/` and `demos/eval/results/` are
+  pre-shipping exploration — decide whether to delete or move
+  under `attic/`.
 
 ---
 
-## How to bootstrap the memory module in a new project
+## Memory tiers — what goes where
 
-You only need this once per project. The package is already installed
-user-wide (via `pipx install -e .` against this repo), so the
-`memory-graph` binary is on PATH.
+| Tier | Where | When loaded | What goes in |
+|------|-------|-------------|--------------|
+| Rules + project context | `CLAUDE.md` (this file) | Every session, eagerly; re-read after `/clear` | Static guidance plus the curated "Current project context" section above. |
+| Facts / preferences | Claude Code auto-memory at `~/.claude/projects/<dir>/memory/` | `MEMORY.md` index eagerly; entries on reference | Slowly-changing facts: user role, repo conventions, durable decisions, sub-agent config. |
+| Long-term archive | `memory_recall` MCP (`.memory-recall/`) | Lazily, via `memory_retrieve_candidates` | Anything worth keeping permanently: bug write-ups, architectural decisions, knowledge from teammates. |
 
-### Prerequisites (one-time, machine-wide)
+The tiers are deliberately distinct mechanisms. CLAUDE.md is plain
+text the agent always sees. Auto-memory is markdown indexed via
+`MEMORY.md`. `memory_recall` does multi-vector semantic retrieval
+with sub-agent expansion at both capture and search time.
 
-```bash
-# 1. Claude Code OAuth token — required for remember/retrieve/compact
-#    (the 10 primitives work without it; only the agentic tools need auth)
-claude setup-token
-# paste the token into ~/.bashrc:
-echo 'export CLAUDE_CODE_OAUTH_TOKEN=<paste>' >> ~/.bashrc
-source ~/.bashrc
+## Session protocol
 
-# 2. (If not already done) Install this package so the CLI is on PATH
-pipx install -e /home/benet/code/memory-module-mcp
-# Verify:
-which memory-graph
+At the **start** of every session:
 
-# If you pipx-installed before 2026-05-19, claude-agent-sdk was an
-# optional extra and is now required. Inject it once:
-pipx inject memory-graph-mcp claude-agent-sdk
-# (or simply: pipx reinstall memory-graph-mcp)
-```
+1. Read the "Current project context" section above to orient.
+2. Auto-memory's `MEMORY.md` index is already loaded — pull in
+   linked entries if relevant.
+3. Call `memory_status` if you expect to use `memory_recall` later
+   (cheap; confirms the store is reachable).
 
-### Per new project — one command
+**During** the session:
 
-```bash
-cd /path/to/the/new/project
+- For findings worth keeping permanently (architectural facts, bug
+  root-causes, contracts with external systems): call
+  `memory_capture(content)` to store them in long-term memory.
+- For recall: prefer `memory_retrieve_candidates(query)` first;
+  call `memory_get(ids=[...])` (batched) only for candidates whose
+  summaries suggest the body has what you need.
+- If a fact in auto-memory has become wrong, edit or delete the
+  file under `~/.claude/projects/<dir>/memory/` and update
+  `MEMORY.md` accordingly.
 
-# One-shot: register MCP + init store + install CLAUDE.md protocol
-memory-graph setup
-#   Idempotent. Re-runs are safe — each step reports "already done"
-#   and continues. Pass --force to replace an existing .mcp.json entry
-#   or a stale CLAUDE.md section. --skip-register / --skip-init /
-#   --skip-claude-md to do only some of the steps.
+**Before stopping** (especially before context compaction):
 
-# (Optional) Stop-hook for auto-digest at session end
-mkdir -p .claude
-cat > .claude/settings.json <<'EOF'
-{
-  "hooks": {
-    "Stop": [
-      { "command": "memory-graph digest --transcript \"$CLAUDE_TRANSCRIPT_PATH\"" }
-    ]
-  }
-}
-EOF
+- If something material shifted, update the "Current project
+  context" section so the next cold-start has it.
 
-# (Optional) Verify
-memory-graph status
-#   Should print JSON with total_nodes: 0 (fresh store).
-```
+## Bootstrapping memory-recall in a new project
 
-If you'd rather run the three steps individually (more control, e.g.
-choose your own CLAUDE.md target file), `setup` is sugar for:
+The package is installed user-wide (`pipx install -e
+/home/benet/code/memory-module-mcp`), so the `memory-recall` binary
+is on PATH.
 
 ```bash
-memory-graph register             # → .mcp.json
-memory-graph init                 # → .memory-graph/
-memory-graph install-claude-md    # → memory protocol in CLAUDE.md
+cd /path/to/project
+memory-recall setup      # register + init + install-claude-md (idempotent)
+memory-recall serve      # (Claude Code invokes this on demand)
 ```
 
-Restart any open Claude Code session in this directory. The 13
-`memory_*` tools should be available. Sanity check:
+Individual subcommands (`init`, `register`, `install-claude-md`,
+`uninstall-claude-md`) can be run alone. `setup` accepts
+`--skip-register / --skip-init / --skip-claude-md` and `--force`
+(propagates to register + install-claude-md).
 
-> *"Call `memory_status` and show me what you see."*
-
-### What this does NOT do
-
-- Doesn't affect any other project's Claude Code behavior. Without a
-  project-level `.mcp.json` (or a `~/.claude.json` entry — which we
-  don't write here), other projects don't see the server.
-- Doesn't commit anything. Decide per project whether to commit
-  `.mcp.json` (depends on whether the token in it is sensitive),
-  `.memory-graph/` (commit for shared team memory; gitignore for
-  per-person), and `.claude/settings.json` (the Stop hook).
-
-### Undo
+Optional visualization:
 
 ```bash
-memory-graph unregister              # removes the .mcp.json entry
-rm -rf .memory-graph                 # delete the store
-# (also remove the memory protocol section from CLAUDE.md by hand)
+memory-recall viz        # http://localhost:8765
 ```
-
-### Scope: project vs user
-
-Default is project (`./.mcp.json`). For "every Claude Code session
-everywhere sees it":
-
-```bash
-memory-graph register --scope user
-```
-
-Even then, the server is dormant in any project without a
-`.memory-graph/` directory.
-
----
 
 ## Working on this repo
 
 ```bash
 # Tests
-.venv/bin/pytest -q
+.venv/bin/python -m pytest -q
 
-# Slow tests
-FASTEMBED=1 .venv/bin/pytest tests/test_embed.py    # real model
-CLAUDE_CODE_OAUTH_TOKEN=$TOKEN .venv/bin/pytest \
-    tests/test_orchestration.py                     # real sub-agent
+# Real-model embedding test (slow; gated)
+FASTEMBED=1 .venv/bin/python -m pytest tests/test_embed.py
 
-# Sub-agent prompts live as markdown files — edit and re-run, no
-# code changes needed:
-src/memory_graph/prompts/system.md
-src/memory_graph/prompts/remember.md
-src/memory_graph/prompts/retrieve.md
-src/memory_graph/prompts/compact.md
+# Run the recall-stress benchmark
+cd demos/eval/experiments/e25_multivec_vs_singlevec
+.venv/bin/python e25.py
 ```
 
-## Layout reminder
+Sub-agent default model is `claude-sonnet-4-6` with extended
+thinking disabled (`thinking={"type": "disabled"}`). Don't change
+this without re-running e25/e25b — the choice is empirical, not
+arbitrary. Override per-call or via `MEMORY_RECALL_SUBAGENT_MODEL`.
+
+## Repo layout reminder
 
 ```
-src/memory_graph/
-├── storage/        SQLite + markdown + Note model + ULID ids
-├── embed/          Embedder protocol, FastEmbed, deterministic fake
-├── primitives/     Store class with all memory operations (pure code)
-├── orchestration/  Agent SDK runner + remember / retrieve / compact
-├── prompts/        4 markdown prompt templates
-├── server.py       FastMCP server registering 13 tools
-└── cli.py          memory-graph: init / serve / digest / reindex /
-                                  status / register / unregister
+src/memory_recall/
+├── storage/        SQLite + markdown + ULIDs + Note model
+├── embed/          Embedder protocol, FastEmbed, fake for tests
+├── store.py        capture + multi-vector search
+├── subagent.py     capture/search sub-agent (Sonnet, no thinking)
+├── server.py       FastMCP server (5 tools)
+├── cli.py          init / serve / status / viz / register / unregister
+├── viz/            FastAPI + plotly viz
+└── prompts/        capture.md, search.md
+
+demos/eval/
+├── experiments/    benchmarks (e10, e25, e25b, ...) + PLAN.md
+└── lab/            exploratory scratch from earlier iterations (B1–B11)
 ```
-
-## Commit history (v0)
-
-Build was 9 commits:
-
-1. Project skeleton
-2. Storage layer (SQLite + markdown + ULIDs)
-3. Local embeddings (FastEmbed + deterministic fake)
-4. Memory primitives (Store class)
-5. MCP server (10 primitives)
-6. Agent SDK orchestration (remember / retrieve / compact)
-7. CLI (init / serve / digest / reindex / status)
-8. Docs (INSTALL.md, CLAUDE.md template, README)
-9. CLI register / unregister for one-shot config writing

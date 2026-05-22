@@ -96,8 +96,9 @@ async def memory_retrieve_candidates(query: str, k: int = 10) -> dict[str, Any]:
          of candidate memories — id + title + summary + score + the
          single phrase that matched. NO full body text is returned.
       2. Read the summaries, decide which candidate(s) actually answer
-         your question, and call `memory_get(id)` for each one you
-         want the full body of. Often 0-1 candidates need step 2.
+         your question, and call `memory_get(ids=[...])` once with
+         all chosen ids — it accepts a batch. Often 0-2 candidates
+         need step 2.
 
     The `query` is open-ended. You can pass:
       - a verbatim question ("which class handles outbound retries?")
@@ -130,30 +131,40 @@ async def memory_retrieve_candidates(query: str, k: int = 10) -> dict[str, Any]:
 
 
 @mcp.tool()
-def memory_get(id: str) -> dict[str, Any] | None:
-    """STEP 2 of a two-step recall. Fetch the full body of one memory.
+def memory_get(ids: list[str]) -> list[dict[str, Any] | None]:
+    """STEP 2 of a two-step recall. Fetch the full bodies of one or
+    more memories in a single call.
 
-    Call this after `memory_retrieve_candidates` when a candidate's
-    summary suggests it answers your question and you need the
-    detailed content. Returns the note's title, summary, full body
-    text, tags, and every indexed retrieval view (the keywords and
-    paraphrases the sub-agent generated at capture time).
+    `ids` is a list of note ids from `memory_retrieve_candidates`.
+    Returns a list of the same length and order; each element is the
+    note's title, summary, full body text, tags, and every indexed
+    retrieval view, or `null` if that id doesn't exist.
 
-    Returns `null` if the id doesn't exist. Don't call this on every
-    candidate by default — most calls only need step 1's summaries.
+    **Always batch.** If two or three candidate summaries look
+    relevant, pass all their ids in one call rather than making
+    sequential `memory_get` calls — one MCP round-trip is much
+    cheaper than several. Pass a single-element list when only one
+    body is needed.
+
+    Don't call this on every candidate by default — most queries
+    only need step 1's summaries.
     """
     store = _get_store()
-    note = store.get(id)
-    if note is None:
-        return None
-    views = store.get_views(id)
-    return {
-        **note.to_dict(),
-        "views": [
-            {"kind": v.view_kind, "text": v.view_text}
-            for v in views
-        ],
-    }
+    out: list[dict[str, Any] | None] = []
+    for nid in ids:
+        note = store.get(nid)
+        if note is None:
+            out.append(None)
+            continue
+        views = store.get_views(nid)
+        out.append({
+            **note.to_dict(),
+            "views": [
+                {"kind": v.view_kind, "text": v.view_text}
+                for v in views
+            ],
+        })
+    return out
 
 
 @mcp.tool()

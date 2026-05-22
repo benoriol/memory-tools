@@ -53,11 +53,21 @@ async def test_capture_and_status_roundtrip(
     list_payload = _parse_tool_result(listed)
     assert any(item["id"] == nid for item in list_payload)
 
-    got = await server_module.mcp.call_tool("memory_get", {"id": nid})
+    got = await server_module.mcp.call_tool("memory_get", {"ids": [nid]})
     got_payload = _parse_tool_result(got)
-    assert got_payload["id"] == nid
-    kinds = sorted(v["kind"] for v in got_payload["views"])
+    assert isinstance(got_payload, list) and len(got_payload) == 1
+    assert got_payload[0]["id"] == nid
+    kinds = sorted(v["kind"] for v in got_payload[0]["views"])
     assert kinds == ["keyword", "paraphrase", "summary"]
+
+    # Batch + missing-id behavior: list order preserved, None for misses.
+    batched = await server_module.mcp.call_tool(
+        "memory_get", {"ids": [nid, "missing-id-xxx"]}
+    )
+    batched_payload = _parse_tool_result(batched)
+    assert len(batched_payload) == 2
+    assert batched_payload[0]["id"] == nid
+    assert batched_payload[1] is None
 
     status = await server_module.mcp.call_tool("memory_status", {})
     assert _parse_tool_result(status)["count"] == 1

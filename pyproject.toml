@@ -38,6 +38,7 @@ where = ["src"]
 "memory_recall" = [
     "storage/schema.sql",
     "prompts/*.md",
+    "templates/*.md",
     "viz/static/*",
 ]
 

@@ -19,8 +19,8 @@ The main agent recalls memories in two cheap steps:
    it into canonical keywords and paraphrases, and you get back the
    top-k candidate notes with their **summaries only**. Typical
    response is ~1000 tokens for k=10.
-2. **`memory_get(id)`** — for whichever candidate(s) the main agent
-   judges relevant, fetch the full body.
+2. **`memory_get(ids)`** — for whichever candidate(s) the main agent
+   judges relevant, fetch the full bodies in a single batched call.
 
 Most calls only need step 1. Bodies are only loaded when actually
 needed, and the main agent — not the memory layer — decides what's
@@ -32,7 +32,7 @@ relevant.
 |------|---------|
 | `memory_capture(content, tags?)` | Save an open-ended raw note; sub-agent indexes it under summary + keywords + paraphrases. |
 | `memory_retrieve_candidates(query, k=10)` | **Step 1 of recall.** Top-k candidates with summaries. |
-| `memory_get(id)` | **Step 2 of recall.** Full body of one note. |
+| `memory_get(ids)` | **Step 2 of recall.** Full bodies of one or more notes, batched. |
 | `memory_list(limit=100, offset=0)` | Browse all notes, newest first. |
 | `memory_status()` | Store stats. |
 
@@ -45,10 +45,15 @@ pipx install -e .
 Then in any project directory:
 
 ```bash
-memory-recall init       # creates .memory-recall/
-memory-recall register   # writes .mcp.json so Claude Code picks it up
+memory-recall setup      # register + init + install-claude-md (recommended)
 memory-recall serve      # (Claude Code runs this for you when needed)
 ```
+
+`setup` is idempotent — re-running on a fully-configured project is
+a no-op. Individual steps (`init`, `register`, `install-claude-md`)
+can be run alone if you prefer. `--skip-register`, `--skip-init`,
+`--skip-claude-md` opt out of any step; `--force` replaces an
+existing CLAUDE.md section.
 
 ## Visualization
 
@@ -100,9 +105,11 @@ src/memory_recall/
   store.py       capture + multi-vector search + max-pool ranking
   subagent.py    capture/search sub-agent (Sonnet, no thinking)
   server.py      FastMCP server registering the 5 tools
-  cli.py         init / serve / status / viz / register / unregister
+  cli.py         init / serve / status / viz / register / unregister /
+                 install-claude-md / uninstall-claude-md / setup
   viz/           FastAPI + plotly visualization
   prompts/       capture.md, search.md
+  templates/     CLAUDE.md operator-guidance section
 tests/           pytest suite
 demos/eval/
   experiments/   benchmarks (e10, e25, e25b, ...) with READMEs
