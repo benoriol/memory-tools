@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# mem - install or uninstall the memory-commands slash commands for a project.
+#
+# Per-project: run `mem install` inside a project to make the /mem-* commands available there
+# (symlinked into ./.claude/commands). Per-project setup of the notes and the CLAUDE.md
+# contract is done by the /mem-init slash command, not this CLI.
+set -euo pipefail
+shopt -s nullglob
+
+# Resolve through symlinks so this works when `mem` itself is symlinked onto PATH.
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+MODULE_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+SRC_DIR="$MODULE_DIR/commands"
+
+# Default target is the current project's command dir; override with CLAUDE_COMMANDS_DIR.
+DEST_DIR="${CLAUDE_COMMANDS_DIR:-$PWD/.claude/commands}"
+
+usage() {
+  cat <<EOF
+mem - manage the memory-commands slash commands (per-project)
+
+Usage:
+  mem install     symlink the mem-* commands into this project's .claude/commands
+  mem uninstall   remove the symlinks this module created here
+  mem status      show which mem-* commands are linked here
+  mem help        this message
+
+Module:  $MODULE_DIR
+Target:  $DEST_DIR
+  (override the target with the CLAUDE_COMMANDS_DIR environment variable)
+
+Run this from a project's root. install symlinks rather than copies, so editing the module (or
+'git pull') updates the live commands. It never overwrites a real file; uninstall only removes
+symlinks that point back into this module. After installing, run /mem-init inside the project to
+scaffold project_notes/ and wire the CLAUDE.md contract.
+EOF
+}
+
+cmd_install() {
+  mkdir -p "$DEST_DIR"
+  local n=0
+  for f in "$SRC_DIR"/mem*.md; do
+    local name link
+    name="$(basename "$f")"
+    link="$DEST_DIR/$name"
+    if [ -e "$link" ] && [ ! -L "$link" ]; then
+      echo "skip  $name (a real file exists at $link; not overwriting)"
+      continue
+    fi
+    ln -sfn "$f" "$link"
+    echo "link  $name"
+    n=$((n + 1))
+  done
+  echo "installed $n command(s) into $DEST_DIR"
+}
+
+cmd_uninstall() {
+  local n=0
+  for link in "$DEST_DIR"/mem*.md; do
+    [ -L "$link" ] || continue
+    local tgt
+    tgt="$(readlink "$link")"
+    case "$tgt" in
+      "$SRC_DIR"/*)
+        rm -f "$link"
+        echo "rm    $(basename "$link")"
+        n=$((n + 1))
+        ;;
+      *)
+        echo "skip  $(basename "$link") (symlink not owned by this module -> $tgt)"
+        ;;
+    esac
+  done
+  echo "removed $n command(s) from $DEST_DIR"
+}
+
+cmd_status() {
+  echo "module commands: $SRC_DIR"
+  echo "target dir:      $DEST_DIR"
+  for f in "$SRC_DIR"/mem*.md; do
+    local name link state
+    name="$(basename "$f")"
+    link="$DEST_DIR/$name"
+    if [ -L "$link" ] && [ "$(readlink "$link")" = "$f" ]; then
+      state="linked"
+    elif [ -e "$link" ]; then
+      state="present (not ours)"
+    else
+      state="missing"
+    fi
+    printf '  %-16s %s\n' "$name" "$state"
+  done
+}
+
+case "${1:-help}" in
+  install)        cmd_install ;;
+  uninstall)      cmd_uninstall ;;
+  status)         cmd_status ;;
+  help | -h | --help) usage ;;
+  *) echo "unknown command: ${1}" >&2; echo; usage; exit 1 ;;
+esac
