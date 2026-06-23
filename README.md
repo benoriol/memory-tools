@@ -5,6 +5,13 @@ generalization of an experiment-logging system: explicit control over what gets 
 where and when, per-store gating, and a strict split between always-read context and
 on-demand recall.
 
+Ships in two **profiles**:
+- **generic** (`/mem-*`): `journal/` · `knowledge/` · `canon/`. The default; good for any project.
+- **paper** (`/logexp`, `/technote`, `/papernote`, `/note`, `/whattonote`, `/paper-audit`,
+  `/paper-init`, `/paper-index`): a research variant where the journal becomes dated
+  **experiments** with a paper-critical **important subset**, knowledge becomes **technical
+  notes**, and canon becomes a paper-format **narrative**. See [Paper profile](#paper-profile).
+
 ## Install
 
 This folder is the central module; keep it as a git repo so a single `git pull` updates every
@@ -20,10 +27,20 @@ Then opt a project in, per project:
 
 ```
 cd ~/code/some-project
-mem install        # symlink the mem-* commands into ./.claude/commands
-                   # (then, inside Claude Code) /mem-init   to scaffold notes + wire the contract
-mem uninstall      # remove them from this project
+mem install            # auto-detect the profile (generic vs paper), then confirm
+mem install generic    # force the generic profile (/mem-*)
+mem install paper      # force the paper profile (/logexp, /technote, ...)
+                       # then, inside Claude Code: /mem-init (generic) or /paper-init (paper)
+                       # to scaffold notes + wire the contract
+mem status             # show which commands of each profile are linked here
+mem uninstall          # remove this module's symlinks (any profile) from this project
 ```
+
+Bare `mem install` sniffs the project for research signals (`paper_writeups/`, `*.tex`, `wandb/`,
+`checkpoints/`, an existing `project_notes/experiments*`) and suggests `paper`, otherwise
+`generic`; it asks for one confirmation before linking (and falls back to the guess when run
+non-interactively). `uninstall` is profile-agnostic: it removes any command symlink pointing back
+into this module, so switching profiles is just `uninstall` then `install <other>`.
 
 `mem install` symlinks rather than copies, so editing the module (or `git pull`) updates the
 live commands. It never overwrites a real file, and `uninstall` only removes symlinks that point
@@ -101,3 +118,40 @@ Routing and review:
 | `journal/` | low | n/a (append-only) | never overwrite a leaf |
 | `knowledge/` | low | medium (diff shown) | new subfolder = confirm first |
 | `canon/` | high | high | sentence-by-sentence approval, advise-first |
+
+## Paper profile
+
+A research-oriented variant of the same system (same tiers, same gating philosophy, same
+single-source-of-truth indexes), shipped under `profiles/paper/`. Install it with
+`mem install paper`; scaffold a project with `/paper-init`. A runnable example tree lives in
+`profiles/paper/example/`.
+
+What changes versus the generic profile:
+
+| generic | paper | difference |
+|---|---|---|
+| `journal/` + `index.md` | `experiments/` + `experiments.md` | dated run leaves; richer fields (Why / Headline / Important / Type / Setup / Result / Paths) |
+| — | `experiments_important.md` | **new always-read tier**: the paper-critical subset |
+| `knowledge/` | `technical_notes/` | durable methodology / gotchas (same protocol) |
+| `canon/` | `paper_narrative.md` | one curated doc, laid out in paper order (abstract → method → results → ablations → supplementary → open) |
+| `/mem-log` `/mem-note` `/mem-canon` | `/logexp` `/technote` `/papernote` | writers |
+| `/mem` `/mem-suggest` `/mem-audit` | `/note` `/whattonote` `/paper-audit` | router / advisory / audit |
+| `/mem-init` `/mem-index` | `/paper-init` `/paper-index` | scaffold / rebuild indexes |
+
+**The important subset is a projection, not a second list.** Each experiment leaf carries an
+`**Important:** yes|no` flag; `/paper-index` rebuilds both `experiments.md` (all runs) and
+`experiments_important.md` (only the flagged ones) from the leaves. To promote or demote a run you
+flip the flag on its leaf and rerun the index, never hand-edit the subset, so it can never drift.
+
+The paper profile uses a **flat layout** (one research line per project). The
+`image_control` project keeps its own bespoke multi-line (`project_notes/<line>/`) setup; that
+generalization is intentionally out of scope here.
+
+### Paper gating summary
+
+| Destination | Add | Edit | Notes |
+|---|---|---|---|
+| `experiments/` + `experiments.md` | low | n/a (append-only) | never overwrite a leaf |
+| `experiments_important.md` | medium (explicit ask sets the flag) | via the leaf flag | rebuilt by `/paper-index`, never hand-edited |
+| `technical_notes/` | low | medium (diff shown) | |
+| `paper_narrative.md` | high | high | sentence-by-sentence approval, advise-first |

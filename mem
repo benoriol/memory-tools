@@ -1,29 +1,47 @@
 #!/usr/bin/env bash
 # mem - install or uninstall the memory-commands slash commands for a project.
 #
-# Per-project: run `mem install` inside a project to make the /mem-* commands available there
-# (symlinked into ./.claude/commands). Per-project setup of the notes and the CLAUDE.md
-# contract is done by the /mem-init slash command, not this CLI.
+# Two profiles:
+#   generic  the /mem-* command set (journal / knowledge / canon)
+#   paper    the research command set (/logexp /technote /papernote /note /whattonote
+#            /paper-audit /paper-init /paper-index)
+#
+# Per-project: run `mem install [profile]` inside a project to symlink that profile's commands
+# into ./.claude/commands. Per-project setup of the notes and the CLAUDE.md contract is done by
+# the /mem-init (generic) or /paper-init (paper) slash command, not this CLI.
 set -euo pipefail
 shopt -s nullglob
 
 # Resolve through symlinks so this works when `mem` itself is symlinked onto PATH.
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 MODULE_DIR="$(cd "$(dirname "$SELF")" && pwd)"
-SRC_DIR="$MODULE_DIR/commands"
+
+# Per-profile source dir + filename glob.
+GENERIC_DIR="$MODULE_DIR/commands"
+GENERIC_GLOB="mem*.md"
+PAPER_DIR="$MODULE_DIR/profiles/paper/commands"
+PAPER_GLOB="*.md"
 
 # Default target is the current project's command dir; override with CLAUDE_COMMANDS_DIR.
 DEST_DIR="${CLAUDE_COMMANDS_DIR:-$PWD/.claude/commands}"
+
+profile_dir()  { case "$1" in generic) echo "$GENERIC_DIR" ;; paper) echo "$PAPER_DIR" ;; esac; }
+profile_glob() { case "$1" in generic) echo "$GENERIC_GLOB" ;; paper) echo "$PAPER_GLOB" ;; esac; }
 
 usage() {
   cat <<EOF
 mem - manage the memory-commands slash commands (per-project)
 
 Usage:
-  mem install     symlink the mem-* commands into this project's .claude/commands
-  mem uninstall   remove the symlinks this module created here
-  mem status      show which mem-* commands are linked here
-  mem help        this message
+  mem install [generic|paper]   symlink a profile's commands into ./.claude/commands
+  mem install                   auto-detect the profile, then confirm
+  mem uninstall                 remove every symlink this module created here (any profile)
+  mem status                    show which commands of each profile are linked here
+  mem help                      this message
+
+Profiles:
+  generic  /mem-* (journal / knowledge / canon)         <- $GENERIC_DIR
+  paper    /logexp /technote /papernote /note ...        <- $PAPER_DIR
 
 Module:  $MODULE_DIR
 Target:  $DEST_DIR
@@ -31,16 +49,62 @@ Target:  $DEST_DIR
 
 Run this from a project's root. install symlinks rather than copies, so editing the module (or
 'git pull') updates the live commands. It never overwrites a real file; uninstall only removes
-symlinks that point back into this module. After installing, run /mem-init inside the project to
-scaffold project_notes/ and wire the CLAUDE.md contract.
+symlinks that point back into this module. After installing, run /mem-init (generic) or
+/paper-init (paper) inside the project to scaffold project_notes/ and wire the CLAUDE.md contract.
 EOF
 }
 
+# Guess the profile from filesystem signals. Echoes "generic" or "paper" on stdout; the
+# human-readable reason goes to stderr so it does not pollute command substitution.
+detect_profile() {
+  local reasons=()
+  [ -d "$PWD/paper_writeups" ]            && reasons+=("paper_writeups/")
+  [ -d "$PWD/wandb" ]                     && reasons+=("wandb/")
+  [ -d "$PWD/checkpoints" ]              && reasons+=("checkpoints/")
+  [ -d "$PWD/project_notes/experiments" ] && reasons+=("project_notes/experiments/")
+  [ -f "$PWD/project_notes/experiments.md" ] && reasons+=("project_notes/experiments.md")
+  local tex; tex=( "$PWD"/*.tex )
+  [ ${#tex[@]} -gt 0 ]                    && reasons+=("*.tex")
+  # any project_notes/<line>/experiments.md (the multi-line research layout)
+  local line; for line in "$PWD"/project_notes/*/experiments.md; do reasons+=("$(basename "$(dirname "$line")")/experiments.md"); done
+  if [ ${#reasons[@]} -gt 0 ]; then
+    echo "detected research signals: ${reasons[*]} -> suggesting 'paper'" >&2
+    echo paper
+  else
+    echo "no research signals found -> suggesting 'generic'" >&2
+    echo generic
+  fi
+}
+
+# Resolve the profile to install: explicit arg, else auto-detect + (if interactive) confirm.
+resolve_profile() {
+  local arg="${1:-}"
+  if [ -n "$arg" ]; then
+    case "$arg" in generic|paper) echo "$arg"; return 0 ;; *) echo "unknown profile: $arg (use 'generic' or 'paper')" >&2; return 1 ;; esac
+  fi
+  local guess; guess="$(detect_profile)"
+  if [ -t 0 ]; then
+    local ans
+    read -r -p "Install profile '$guess'? [Y]es / (g)eneric / (p)aper / (n)o: " ans
+    case "$ans" in
+      ""|y|Y|yes) echo "$guess" ;;
+      g|generic)  echo generic ;;
+      p|paper)    echo paper ;;
+      *)          echo "aborted." >&2; return 1 ;;
+    esac
+  else
+    echo "non-interactive; using '$guess' (pass 'generic'/'paper' to override)" >&2
+    echo "$guess"
+  fi
+}
+
 cmd_install() {
+  local profile src glob
+  profile="$(resolve_profile "${1:-}")" || exit 1
+  src="$(profile_dir "$profile")"; glob="$(profile_glob "$profile")"
   mkdir -p "$DEST_DIR"
-  local n=0
-  for f in "$SRC_DIR"/mem*.md; do
-    local name link
+  local n=0 f name link
+  for f in "$src"/$glob; do
     name="$(basename "$f")"
     link="$DEST_DIR/$name"
     if [ -e "$link" ] && [ ! -L "$link" ]; then
@@ -51,23 +115,20 @@ cmd_install() {
     echo "link  $name"
     n=$((n + 1))
   done
-  echo "installed $n command(s) into $DEST_DIR"
+  echo "installed $n '$profile' command(s) into $DEST_DIR"
 }
 
 cmd_uninstall() {
-  local n=0
-  for link in "$DEST_DIR"/mem*.md; do
+  # Profile-agnostic: remove any *.md symlink in DEST that resolves into this module.
+  local n=0 link tgt
+  for link in "$DEST_DIR"/*.md; do
     [ -L "$link" ] || continue
-    local tgt
-    tgt="$(readlink "$link")"
+    tgt="$(readlink -f "$link" 2>/dev/null || true)"
     case "$tgt" in
-      "$SRC_DIR"/*)
+      "$MODULE_DIR"/*)
         rm -f "$link"
         echo "rm    $(basename "$link")"
         n=$((n + 1))
-        ;;
-      *)
-        echo "skip  $(basename "$link") (symlink not owned by this module -> $tgt)"
         ;;
     esac
   done
@@ -75,25 +136,28 @@ cmd_uninstall() {
 }
 
 cmd_status() {
-  echo "module commands: $SRC_DIR"
-  echo "target dir:      $DEST_DIR"
-  for f in "$SRC_DIR"/mem*.md; do
-    local name link state
-    name="$(basename "$f")"
-    link="$DEST_DIR/$name"
-    if [ -L "$link" ] && [ "$(readlink "$link")" = "$f" ]; then
-      state="linked"
-    elif [ -e "$link" ]; then
-      state="present (not ours)"
-    else
-      state="missing"
-    fi
-    printf '  %-16s %s\n' "$name" "$state"
+  echo "target dir: $DEST_DIR"
+  local profile src glob f name link state
+  for profile in generic paper; do
+    src="$(profile_dir "$profile")"; glob="$(profile_glob "$profile")"
+    echo "[$profile] $src"
+    for f in "$src"/$glob; do
+      name="$(basename "$f")"
+      link="$DEST_DIR/$name"
+      if [ -L "$link" ] && [ "$(readlink -f "$link")" = "$(readlink -f "$f")" ]; then
+        state="linked"
+      elif [ -e "$link" ]; then
+        state="present (not ours)"
+      else
+        state="missing"
+      fi
+      printf '  %-18s %s\n' "$name" "$state"
+    done
   done
 }
 
 case "${1:-help}" in
-  install)        cmd_install ;;
+  install)        shift; cmd_install "${1:-}" ;;
   uninstall)      cmd_uninstall ;;
   status)         cmd_status ;;
   help | -h | --help) usage ;;
