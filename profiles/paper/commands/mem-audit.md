@@ -2,7 +2,7 @@ Audit the paper memory for inconsistencies. Scope / note (optional): $ARGUMENTS
 
 Cross-check the narrative and indexes against the experiment **detail leaves** (the source of
 truth) and report a punch-list. **Never silently fix:** propose, then apply only after I approve
-(narrative fixes route to `/papernote`, index fixes to `/paper-index`). Research analog of
+(narrative fixes route to `/mem-canon`, index fixes to `/mem-index`). Research analog of
 `/mem-audit`.
 
 **Scope.** No argument: exhaustive — `paper_narrative.md` + `experiments_important.md` +
@@ -12,10 +12,10 @@ concern).
 
 **Check for:**
 1. **Index drift** — `experiments.md` / `technical_notes.md` not matching the leaves on disk
-   (missing entry, stale pointer, wrong order). Fix by running `/paper-index`.
+   (missing entry, stale pointer, wrong order). Fix by running `/mem-index`.
 2. **Important-subset drift** — `experiments_important.md` not matching the set of leaves flagged
    `**Important:** yes` (an entry present that is not flagged, or a flagged leaf missing). Fix by
-   rerunning `/paper-index experiments`; if the *flag itself* is wrong, that is a `/logexp` edit
+   rerunning `/mem-index experiments`; if the *flag itself* is wrong, that is a `/mem-log` edit
    to the leaf.
 3. **Number drift** — every figure in the narrative / important index matches its cited detail
    leaf (report both values and locations).
@@ -34,6 +34,6 @@ concern).
 **Report** each finding as: type · location(s) · the conflict · a suggested fix.
 
 **Correction policy.** Detail leaves are truth. Fix a wrong recorded result with a NEW dated
-superseding leaf (cross-linked), not a silent edit; narrative fixes go through `/papernote`;
-index fixes through `/paper-index`; a wrong `**Important:**` flag is fixed on the leaf via
-`/logexp`. Apply only after I approve.
+superseding leaf (cross-linked), not a silent edit; narrative fixes go through `/mem-canon`;
+index fixes through `/mem-index`; a wrong `**Important:**` flag is fixed on the leaf via
+`/mem-log`. Apply only after I approve.

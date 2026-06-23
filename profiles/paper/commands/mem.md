@@ -9,10 +9,10 @@ fan out to several.
 
 | If the content is... | Destination | Command | Gating |
 |---|---|---|---|
-| a specific run / result (numbers, recipe, paths) | detail leaf + `experiments.md` | `/logexp` | low |
-| ...and I asked for it to be paper-critical | + `experiments_important.md` (the `**Important:**` flag) | `/logexp` | medium — explicit ask |
-| durable methodology / operational knowledge / a gotcha | `technical_notes/` + its index | `/technote` | low new, medium edit |
-| a thematic paper claim / argument | `paper_narrative.md` | `/papernote` | high, sentence-by-sentence |
+| a specific run / result (numbers, recipe, paths) | detail leaf + `experiments.md` | `/mem-log` | low |
+| ...and I asked for it to be paper-critical | + `experiments_important.md` (the `**Important:**` flag) | `/mem-log` | medium — explicit ask |
+| durable methodology / operational knowledge / a gotcha | `technical_notes/` + its index | `/mem-note` | low new, medium edit |
+| a thematic paper claim / argument | `paper_narrative.md` | `/mem-canon` | high, sentence-by-sentence |
 
 If it is genuinely ambiguous or spans destinations, ask one short routing question. Do not guess.
 
@@ -22,19 +22,19 @@ ambiguous, stop and ask a short follow-up before writing. A quick question is al
 a wrong note or a mis-filed run. Asking never counts against you; committing a guess does.
 
 **2. Announce + confirm the route.** State the destination(s), the file, and the gating in one
-line, e.g. "-> logexp (detail + experiments.md, low), Important: no; also suggest papernote if
+line, e.g. "-> mem-log (detail + experiments.md, low), Important: no; also suggest mem-canon if
 this backs a claim." Get a quick OK on the routing before any irreversible write. This is only
 the routing gate; each command's own gating still applies inside its protocol.
 
-**3. Delegate.** For each destination, read its command file (`/logexp`, `/technote`,
-`/papernote`) and follow it with the same content rather than reimplementing the steps here. Run
+**3. Delegate.** For each destination, read its command file (`/mem-log`, `/mem-note`,
+`/mem-canon`) and follow it with the same content rather than reimplementing the steps here. Run
 the low-friction writes first; for the narrative, run its advise-first, sentence-by-sentence flow
 rather than writing directly.
 
 **4. Shallow audit always runs.** Every route includes its command's consistency check. Never
 finalize a write that contradicts, duplicates, or silently supersedes an existing leaf, index
 entry, or narrative claim; flag the conflict (what and where) and ask first. The deep version is
-`/paper-audit`.
+`/mem-audit`.
 
 **Always:** never write `paper_narrative.md` without explicit sentence-by-sentence approval;
 never flag a run `**Important:**` without an explicit ask; never invent numbers or paths; if your

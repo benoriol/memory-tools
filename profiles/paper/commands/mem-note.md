@@ -2,8 +2,8 @@ Capture a technical / methodology note: durable methodology, an operational fact
 
 Record durable operational or methodology knowledge (architecture, loss/algorithm design,
 evaluation protocol, running / tracking conventions, a recurring gotcha) as a leaf under
-`technical_notes/`, then refresh its index. This is **not** a per-run result (that is `/logexp`)
-and **not** a paper claim (that is `/papernote`). Research analog of `/mem-note`.
+`technical_notes/`, then refresh its index. This is **not** a per-run result (that is `/mem-log`)
+and **not** a paper claim (that is `/mem-canon`). Research analog of `/mem-note`.
 
 **1. New note or edit?** Read `technical_notes.md` (the index) and decide whether this extends an
 existing note or opens a new topic. Editing an existing note mutates durable truth, so it is
@@ -26,8 +26,8 @@ rules here (environment/GPU pinning, commit policy, no fire-and-forget) — thos
 recipe, a default, or a number other reasoning depends on. Make the minimal change; do not
 restructure unasked. Update the `**Summary:**` line only if the scope shifted.
 
-**3. Refresh the index.** Run `/paper-index technical`.
+**3. Refresh the index.** Run `/mem-index technical`.
 
 **Always:** keep the index-to-leaf split (the index points and summarizes, the leaf holds the
 depth); never invent numbers or paths, write "TBD" instead; if the knowledge looks paper-worthy,
-suggest `/papernote`, never write `paper_narrative.md` here.
+suggest `/mem-canon`, never write `paper_narrative.md` here.

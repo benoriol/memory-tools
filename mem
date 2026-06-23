@@ -2,9 +2,9 @@
 # mem - install, update, or remove the memory-commands slash commands for a project.
 #
 # Two profiles:
-#   generic  the /mem-* command set (journal / knowledge / canon)
-#   paper    the research command set (/logexp /technote /papernote /note /whattonote
-#            /paper-audit /paper-init /paper-index)
+#   generic  the /mem-* commands targeting journal / knowledge / canon
+#   paper    the same /mem-* command names, targeting experiments (+ an important subset),
+#            technical notes, and a paper narrative
 #
 # Two install modes:
 #   copy (default)  each project owns real copies of the command files, so you can customise
@@ -13,8 +13,8 @@
 #                   linked project at once (but local edits would change the module; and symlinks
 #                   break when the project repo is cloned without the module).
 #
-# Per-project notes + the CLAUDE.md contract are set up by /mem-init (generic) or /paper-init
-# (paper), not this CLI.
+# Per-project notes + the CLAUDE.md contract are set up by the /mem-init slash command (whichever
+# profile is installed), not this CLI.
 set -euo pipefail
 shopt -s nullglob
 
@@ -26,7 +26,7 @@ MODULE_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 GENERIC_DIR="$MODULE_DIR/commands"
 GENERIC_GLOB="mem*.md"
 PAPER_DIR="$MODULE_DIR/profiles/paper/commands"
-PAPER_GLOB="*.md"
+PAPER_GLOB="mem*.md"
 
 # Default target is the current project's command dir; override with CLAUDE_COMMANDS_DIR.
 DEST_DIR="${CLAUDE_COMMANDS_DIR:-$PWD/.claude/commands}"
@@ -71,9 +71,9 @@ Usage:
   mem uninstall                          remove this module's commands here (keeps your edited copies)
   mem help                               this message
 
-Profiles:
-  generic  /mem-* (journal / knowledge / canon)         <- $GENERIC_DIR
-  paper    /logexp /technote /papernote /note ...        <- $PAPER_DIR
+Profiles (both install the same /mem-* command names; one profile per project):
+  generic  journal / knowledge / canon                              <- $GENERIC_DIR
+  paper    experiments (+important) / technical notes / narrative   <- $PAPER_DIR
 
 Module:  $MODULE_DIR
 Target:  $DEST_DIR
@@ -81,7 +81,7 @@ Target:  $DEST_DIR
 
 Run from a project's root. Copies are real files you can edit per project; `mem update` refreshes
 them and skips anything you changed. `--link` symlinks instead (module edits propagate via
-git pull, but break on clone). After installing, run /mem-init (generic) or /paper-init (paper).
+git pull, but break on clone). After installing, run /mem-init to scaffold the notes.
 EOF
 }
 
@@ -228,27 +228,32 @@ cmd_uninstall() {
 
 cmd_status() {
   echo "target dir: $DEST_DIR"
-  local profile src glob f name link srch ent base desth tgt state
-  for profile in generic paper; do
-    src="$(profile_dir "$profile")"; glob="$(profile_glob "$profile")"
-    echo "[$profile] $src"
-    for f in "$src"/$glob; do
-      name="$(basename "$f")"; link="$DEST_DIR/$name"; srch="$(_hash "$f")"; ent="$(manifest_get "$name")"
+  # Both profiles share command names, so a project has one installed set. The manifest is the
+  # source of truth for what we installed and from which profile.
+  if [ ! -f "$MANIFEST" ]; then
+    echo "no memory-commands installed here."
+    echo "available profiles: generic, paper  (run: mem install [generic|paper])"
+    return 0
+  fi
+  local name prof mode base src link srch desth state tgt
+  while IFS=$'\t' read -r name prof mode base; do
+    [ -n "${name:-}" ] || continue
+    src="$(profile_dir "$prof")/$name"; link="$DEST_DIR/$name"
+    if [ ! -e "$link" ] && [ ! -L "$link" ]; then
+      state="missing"
+    elif [ "$mode" = link ]; then
       if [ -L "$link" ]; then
         tgt="$(readlink -f "$link" 2>/dev/null || true)"
-        case "$tgt" in "$MODULE_DIR"/*) state="linked" ;; *) state="present (foreign symlink)" ;; esac
-      elif [ -e "$link" ]; then
-        desth="$(_hash "$link")"
-        if [ -n "$ent" ]; then
-          base="$(mf_field "$ent" 4)"
-          if   [ "$desth" = "$srch" ]; then state="copied (up to date)"
-          elif [ "$desth" = "$base" ]; then state="copied (update available)"
-          else state="copied (modified)"; fi
-        else state="present (not ours)"; fi
-      else state="missing"; fi
-      printf '  %-18s %s\n' "$name" "$state"
-    done
-  done
+        case "$tgt" in "$MODULE_DIR"/*) state="linked" ;; *) state="link replaced by other target" ;; esac
+      else state="link replaced by a real file"; fi
+    else
+      srch="$(_hash "$src" 2>/dev/null || echo none)"; desth="$(_hash "$link")"
+      if   [ "$desth" = "$srch" ]; then state="copied, up to date"
+      elif [ "$desth" = "$base" ]; then state="copied, update available"
+      else state="copied, modified"; fi
+    fi
+    printf '  %-16s %-8s %s\n' "$name" "$prof" "$state"
+  done < "$MANIFEST"
 }
 
 case "${1:-help}" in

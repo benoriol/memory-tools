@@ -5,7 +5,7 @@ it never drifts structurally; each entry's pointer text comes from fields inside
 so there is a single source of truth. Every index is **regenerated from the leaves, not merged**
 with the old index, which makes it deterministic and idempotent. It rebuilds three managed
 blocks: `experiments.md`, `experiments_important.md`, and `technical_notes.md`. It never touches
-`paper_narrative.md` (that is curated, owned by `/papernote`). Safe to run as the last step of
+`paper_narrative.md` (that is curated, owned by `/mem-canon`). Safe to run as the last step of
 any write.
 
 **1. Resolve.** Root = `MEM_ROOT` env var, else `./project_notes`. Target = $ARGUMENTS if given

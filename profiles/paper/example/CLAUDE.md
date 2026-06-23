@@ -1,7 +1,7 @@
 # Gated Adapter (example research project)
 
 (A real project's own instructions — environment, hardware pinning, commit policy — would live
-here. The block below is what `/paper-init` adds and manages: the memory spine, always loaded by
+here. The block below is what `/mem-init` adds and manages: the memory spine, always loaded by
 the harness.)
 
 <!-- mem:begin (managed by memory-commands) -->
@@ -14,14 +14,14 @@ narrative's summaries.
 
 Destinations and gating: experiments/ + experiments.md (dated run leaves; low; append-only) ·
 experiments_important.md (the paper-critical subset; a projection of each leaf's **Important:**
-yes|no flag, rebuilt by /paper-index, never hand-edited) · technical_notes/ (durable
+yes|no flag, rebuilt by /mem-index, never hand-edited) · technical_notes/ (durable
 methodology/gotchas; low to add, medium to edit) · paper_narrative.md (the curated paper argument;
-high, sentence-by-sentence approval). Capture with /logexp, /technote, /papernote, or /note to
-route; run /paper-index after any write. Keep the always-on set lean: only paper-critical runs
+high, sentence-by-sentence approval). Capture with /mem-log, /mem-note, /mem-canon, or /mem to
+route; run /mem-index after any write. Keep the always-on set lean: only paper-critical runs
 earn the important subset; everything else stays one fetch away in experiments.md.
 
 Notes are fallible: detail leaves are the source of truth; verify against them and raise any
 inconsistency you notice (a narrative number that no longer matches its leaf, a dangling link, a
 stale "results pending", an important entry not flagged on its leaf) on the spot with what and
-where, rather than silently fixing it. The exhaustive sweep is /paper-audit.
+where, rather than silently fixing it. The exhaustive sweep is /mem-audit.
 <!-- mem:end -->

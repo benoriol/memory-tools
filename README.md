@@ -7,10 +7,13 @@ on-demand recall.
 
 Ships in two **profiles**:
 - **generic** (`/mem-*`): `journal/` · `knowledge/` · `canon/`. The default; good for any project.
-- **paper** (`/logexp`, `/technote`, `/papernote`, `/note`, `/whattonote`, `/paper-audit`,
-  `/paper-init`, `/paper-index`): a research variant where the journal becomes dated
+- **paper**: the **same `/mem-*` command names**, but where the journal becomes dated
   **experiments** with a paper-critical **important subset**, knowledge becomes **technical
   notes**, and canon becomes a paper-format **narrative**. See [Paper profile](#paper-profile).
+
+Both profiles install the identical command set (`/mem`, `/mem-init`, `/mem-log`, `/mem-note`,
+`/mem-canon`, `/mem-suggest`, `/mem-audit`, `/mem-index`); the profile you install decides what
+each command writes and where. A project uses one profile.
 
 ## Install
 
@@ -29,10 +32,9 @@ Then opt a project in, per project:
 cd ~/code/some-project
 mem install            # auto-detect the profile (generic vs paper), then confirm
 mem install generic    # force the generic profile (/mem-*)
-mem install paper      # force the paper profile (/logexp, /technote, ...)
+mem install paper      # force the paper profile (same /mem-* names, research content)
 mem install paper --link   # symlink instead of copy (central updates; see below)
-                       # then, inside Claude Code: /mem-init (generic) or /paper-init (paper)
-                       # to scaffold notes + wire the contract
+                       # then, inside Claude Code: /mem-init  (scaffolds notes + wires the contract)
 mem update             # pull new versions of the commands from the module, keeping your edits
 mem status             # show each command's state (copied / linked / modified)
 mem uninstall          # remove this module's commands here (keeps copies you edited)
@@ -140,23 +142,27 @@ Routing and review:
 
 A research-oriented variant of the same system (same tiers, same gating philosophy, same
 single-source-of-truth indexes), shipped under `profiles/paper/`. Install it with
-`mem install paper`; scaffold a project with `/paper-init`. A runnable example tree lives in
+`mem install paper`; scaffold a project with `/mem-init`. A runnable example tree lives in
 `profiles/paper/example/`.
 
-What changes versus the generic profile:
+It uses the **same `/mem-*` command names** as the generic profile — the module keeps the two
+command sets as separate files with identical basenames, and `mem install` copies the chosen
+profile's set to those shared names in the project. So the verbs are stable; only what each writes
+changes:
 
-| generic | paper | difference |
+| command | generic target | paper target |
 |---|---|---|
-| `journal/` + `journal.md` | `experiments/` + `experiments.md` | dated run leaves; richer fields (Why / Headline / Important / Type / Setup / Result / Paths) |
-| — | `experiments_important.md` | **new always-read tier**: the paper-critical subset |
-| `knowledge/` | `technical_notes/` | durable methodology / gotchas (same protocol) |
-| `canon/` | `paper_narrative.md` | one curated doc, laid out in paper order (abstract → method → results → ablations → supplementary → open) |
-| `/mem-log` `/mem-note` `/mem-canon` | `/logexp` `/technote` `/papernote` | writers |
-| `/mem` `/mem-suggest` `/mem-audit` | `/note` `/whattonote` `/paper-audit` | router / advisory / audit |
-| `/mem-init` `/mem-index` | `/paper-init` `/paper-index` | scaffold / rebuild indexes |
+| `/mem-log` | dated event → `journal/` | dated run/experiment → `experiments/` (+ an `Important:` flag) |
+| `/mem-note` | durable method/fact → `knowledge/` | methodology / gotcha → `technical_notes/` |
+| `/mem-canon` | project story/decision → `canon/` | paper argument → `paper_narrative.md` (paper-ordered) |
+| `/mem` `/mem-suggest` `/mem-audit` | route / advise / audit the stores | same, over the paper destinations |
+| `/mem-init` `/mem-index` | scaffold / rebuild indexes | same, for the paper layout |
+
+The paper layout also adds one tier with no generic equivalent: `experiments_important.md`, an
+always-read **paper-critical subset**.
 
 **The important subset is a projection, not a second list.** Each experiment leaf carries an
-`**Important:** yes|no` flag; `/paper-index` rebuilds both `experiments.md` (all runs) and
+`**Important:** yes|no` flag; `/mem-index` rebuilds both `experiments.md` (all runs) and
 `experiments_important.md` (only the flagged ones) from the leaves. To promote or demote a run you
 flip the flag on its leaf and rerun the index, never hand-edit the subset, so it can never drift.
 
@@ -169,6 +175,6 @@ generalization is intentionally out of scope here.
 | Destination | Add | Edit | Notes |
 |---|---|---|---|
 | `experiments/` + `experiments.md` | low | n/a (append-only) | never overwrite a leaf |
-| `experiments_important.md` | medium (explicit ask sets the flag) | via the leaf flag | rebuilt by `/paper-index`, never hand-edited |
+| `experiments_important.md` | medium (explicit ask sets the flag) | via the leaf flag | rebuilt by `/mem-index`, never hand-edited |
 | `technical_notes/` | low | medium (diff shown) | |
 | `paper_narrative.md` | high | high | sentence-by-sentence approval, advise-first |

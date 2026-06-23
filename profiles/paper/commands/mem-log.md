@@ -27,13 +27,13 @@ write "results pending" / "TBD" instead.
 **3. Shallow consistency check.** Read the directly-related leaves (same method + setting +
 claim) and any `paper_narrative.md` claim this touches. If the result contradicts, duplicates, or
 conflicts with a recorded one, ask before finalizing rather than guessing. (Narrow check; the
-full sweep is `/paper-audit`.)
+full sweep is `/mem-audit`.)
 
-**4. Refresh the indexes.** Run `/paper-index experiments` so the leaf appears at the tail of
+**4. Refresh the indexes.** Run `/mem-index experiments` so the leaf appears at the tail of
 `experiments.md`, and in `experiments_important.md` iff it is flagged `**Important:** yes`.
 
 **5. Narrative hand-off.** If the result is paper-relevant (changes or backs a claim), suggest
-`/papernote` with a one-line note on where it would fit. Never write `paper_narrative.md` from
+`/mem-canon` with a one-line note on where it would fit. Never write `paper_narrative.md` from
 here.
 
 **Always:** experiments are append-friendly, but never overwrite an existing leaf; never invent

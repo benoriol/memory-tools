@@ -1,7 +1,7 @@
 Scaffold a research project's paper memory, wire the contract into CLAUDE.md, and optionally migrate existing notes. Optional args: a target notes root and/or existing sources to migrate (e.g. `./project_notes migrate NOTES.md docs/`). $ARGUMENTS
 
-Sets up the flat, paper-oriented layout the other paper commands use (`/logexp`, `/technote`,
-`/papernote`, `/note`, `/whattonote`, `/paper-audit`, `/paper-index`), makes the always-read
+Sets up the flat, paper-oriented layout the other paper commands use (`/mem-log`, `/mem-note`,
+`/mem-canon`, `/mem`, `/mem-suggest`, `/mem-audit`, `/mem-index`), makes the always-read
 contract live in `CLAUDE.md`, and (when pointed at existing material) reorganises that material
 into the structure. Scaffolding is idempotent and non-destructive; migration is proposal-first and
 never bulk-writes. This is the research sibling of `/mem-init`: experiments instead of a journal, a
@@ -15,19 +15,19 @@ env var, else `./project_notes`. State the absolute path and what you will creat
 creating it. Create if missing:
 - `experiments/` — the per-run detail leaves (the source of truth).
 - `experiments.md` — the full chronological index: a one-line header plus an empty managed block
-  (the `mem-index` markers, `regenerate with /paper-index experiments`).
+  (the `mem-index` markers, `regenerate with /mem-index experiments`).
 - `experiments_important.md` — the paper-critical subset index, header plus an empty managed block.
 - `technical_notes/` — durable methodology / operational notes.
 - `technical_notes.md` — its index, header plus an empty managed block.
 - `paper_narrative.md` — the curated paper argument, as a skeleton (no invented results): a title
   `# <project> — paper narrative`, a one-line "source of truth = detail files; maintained via
-  /papernote, sentence-gated" note, then empty sections **TL;DR (abstract) · Method · Main results
+  /mem-canon, sentence-gated" note, then empty sections **TL;DR (abstract) · Method · Main results
   · Ablations · Supplementary · Open / pending**.
 Never overwrite an existing store, index, or note; report what already existed. Empty managed
 block template:
 ```
 # experiments index
-<!-- mem-index: managed block; regenerate with /paper-index experiments. Do not hand-edit between the markers. -->
+<!-- mem-index: managed block; regenerate with /mem-index experiments. Do not hand-edit between the markers. -->
 
 <!-- /mem-index -->
 ```
@@ -46,16 +46,16 @@ narrative's summaries.
 
 Destinations and gating: experiments/ + experiments.md (dated run leaves; low; append-only) ·
 experiments_important.md (the paper-critical subset; a projection of each leaf's **Important:**
-yes|no flag, rebuilt by /paper-index, never hand-edited) · technical_notes/ (durable
+yes|no flag, rebuilt by /mem-index, never hand-edited) · technical_notes/ (durable
 methodology/gotchas; low to add, medium to edit) · paper_narrative.md (the curated paper argument;
-high, sentence-by-sentence approval). Capture with /logexp, /technote, /papernote, or /note to
-route; run /paper-index after any write. Keep the always-on set lean: only paper-critical runs
+high, sentence-by-sentence approval). Capture with /mem-log, /mem-note, /mem-canon, or /mem to
+route; run /mem-index after any write. Keep the always-on set lean: only paper-critical runs
 earn the important subset; everything else stays one fetch away in experiments.md.
 
 Notes are fallible: detail leaves are the source of truth; verify against them and raise any
 inconsistency you notice (a narrative number that no longer matches its leaf, a dangling link, a
 stale "results pending", an important entry not flagged on its leaf) on the spot with what and
-where, rather than silently fixing it. The exhaustive sweep is /paper-audit.
+where, rather than silently fixing it. The exhaustive sweep is /mem-audit.
 <!-- mem:end -->
 ```
 If the block already exists, replace only what is between the markers; never duplicate it.
@@ -79,13 +79,13 @@ existing notes (a `NOTES.md`, a `docs/` pile, a lab log, scattered `.md`, a resu
    narrative, or "leave out" with a reason). Mark which runs you recommend flagging **Important**
    (paper-critical) versus ordinary, with the tradeoff stated. Flag duplicates and contradictions.
 3. **Get approval** on the mapping before writing anything.
-4. **Execute through the writers**, each at its own gating: route runs as in `/logexp`,
-   methodology as in `/technote`, paper claims as in `/papernote` (advise-first, sentence-by-
+4. **Execute through the writers**, each at its own gating: route runs as in `/mem-log`,
+   methodology as in `/mem-note`, paper claims as in `/mem-canon` (advise-first, sentence-by-
    sentence; never bulk-write the narrative). Pull numbers and paths from the sources; never
    invent.
 5. **Non-destructive:** leave originals in place unless I say move them. At the end, report what
    was migrated and where, and what you deliberately left out and why.
-6. Run `/paper-index` to rebuild every index you touched.
+6. Run `/mem-index` to rebuild every index you touched.
 
 **Always:** non-destructive; never overwrite a leaf or bulk-write the narrative; edit `CLAUDE.md`
 only between the managed markers; report what existed, what you created, and what you placed in

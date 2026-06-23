@@ -2,9 +2,9 @@
 
 Full chronological record of every run (oldest first; recent at the tail). One compact pointer
 per run; the detail leaf under `experiments/` is the source of truth. Regenerated from the leaves
-by `/paper-index` — do not hand-edit between the markers.
+by `/mem-index` — do not hand-edit between the markers.
 
-<!-- mem-index: managed block; regenerate with /paper-index experiments. Do not hand-edit between the markers. -->
+<!-- mem-index: managed block; regenerate with /mem-index experiments. Do not hand-edit between the markers. -->
 
 ## 2026-06-01 — LoRA baseline on GLUE
 

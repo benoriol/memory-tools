@@ -2,7 +2,7 @@
 
 Map of the paper: the argument and the evidence behind it. **Source of truth:** per-run facts ->
 the detail leaves under `experiments/`; this file is canonical only for the *synthesis* (the
-story, cross-run tables, which claim each result backs). Maintained via `/papernote`
+story, cross-run tables, which claim each result backs). Maintained via `/mem-canon`
 (sentence-gated) — never auto-written. Methodology lives in `technical_notes/`.
 
 ## TL;DR (abstract)
