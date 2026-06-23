@@ -5,7 +5,7 @@ and it **never writes a single word without your explicit, line-by-line approval
 advising, not writing.
 
 **Always advise first.** Whatever is asked, reason before touching any file:
-- Read the relevant `canon/` doc(s), `canon/index.md`, and the source-of-truth leaves under
+- Read the relevant `canon/` doc(s), `canon.md`, and the source-of-truth leaves under
   `journal/` and `knowledge/` that the claim rests on.
 - Say where the thing belongs: an existing decision doc, `north-star.md`, or a new canon doc
   (e.g. a new numbered decision), with a one-line rationale. Flag any conflict with an existing

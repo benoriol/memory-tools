@@ -8,17 +8,18 @@ index, which makes it deterministic and idempotent. Safe to run as the last step
 **1. Resolve.** Root = `MEM_ROOT` env var, else `./project_notes`. Stores = $ARGUMENTS if
 given, else all three.
 
-**2. Walk the store.** Recursively list every `.md` leaf under the store, excluding `index.md`
-and any folder-level `README.md` (handled in step 4). Note slugs contain no spaces, so each
-emitted line stays unambiguous.
+**2. Walk the store.** Recursively list every `.md` leaf under the store folder (`journal/`,
+`knowledge/`, `canon/`), excluding any folder-level `README.md` (handled in step 4). The index
+itself is the sibling file `<store>.md`, outside the folder, so it is never walked. Note slugs
+contain no spaces, so each emitted line stays unambiguous.
 
 **3. Read each leaf's pointer.** From each leaf take its H1 title and its first `**Summary:**`
 line. If the summary line is missing, use `(summary needed)` and collect that path for the
 report. Never invent a summary.
 
-**4. Emit the managed block.** Rewrite `<store>/index.md`, replacing only the text between the
-`mem-index` markers and preserving anything outside them. Represent the hierarchy with
-two-space indentation per depth level:
+**4. Emit the managed block.** Rewrite the sibling index `<store>.md` (e.g. `knowledge.md`),
+replacing only the text between the `mem-index` markers and preserving anything outside them.
+Represent the hierarchy with two-space indentation per depth level:
 - a folder as `<name>/`, plus its summary if the folder has a `README.md` with one
 - a leaf as `<name>  <summary>` (the file's slug, two spaces, then the summary text)
 

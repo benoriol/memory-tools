@@ -2,79 +2,82 @@ Scaffold a research project's paper memory, wire the contract into CLAUDE.md, an
 
 Sets up the flat, paper-oriented layout the other paper commands use (`/logexp`, `/technote`,
 `/papernote`, `/note`, `/whattonote`, `/paper-audit`, `/paper-index`), makes the always-read
-contract live, and (when pointed at existing material) reorganises that material into the
-structure. Scaffolding is idempotent and non-destructive; migration is proposal-first and never
-bulk-writes. This is the research sibling of `/mem-init`: experiments instead of a journal, a
+contract live in `CLAUDE.md`, and (when pointed at existing material) reorganises that material
+into the structure. Scaffolding is idempotent and non-destructive; migration is proposal-first and
+never bulk-writes. This is the research sibling of `/mem-init`: experiments instead of a journal, a
 paper-critical "important" subset, technical notes instead of knowledge, and a paper narrative
-instead of canon.
+instead of canon. There is no separate spine file: the always-on rules live in a managed block in
+`CLAUDE.md` (which the harness always loads), and the per-destination detail lives in the command
+files and is read when you use them.
 
 **Phase A — Scaffold (always).** Resolve the root: a path in $ARGUMENTS, else the `MEM_ROOT`
 env var, else `./project_notes`. State the absolute path and what you will create before
 creating it. Create if missing:
 - `experiments/` — the per-run detail leaves (the source of truth).
-- `experiments.md` — the full chronological index, header plus an empty managed block (the
-  `mem-index` markers).
-- `experiments_important.md` — the paper-critical subset index, header plus an empty managed
-  block.
+- `experiments.md` — the full chronological index: a one-line header plus an empty managed block
+  (the `mem-index` markers, `regenerate with /paper-index experiments`).
+- `experiments_important.md` — the paper-critical subset index, header plus an empty managed block.
 - `technical_notes/` — durable methodology / operational notes.
 - `technical_notes.md` — its index, header plus an empty managed block.
-- `paper_narrative.md` — the curated paper argument (skeleton; see Phase B).
-Never overwrite an existing store, index, or note; report what already existed.
+- `paper_narrative.md` — the curated paper argument, as a skeleton (no invented results): a title
+  `# <project> — paper narrative`, a one-line "source of truth = detail files; maintained via
+  /papernote, sentence-gated" note, then empty sections **TL;DR (abstract) · Method · Main results
+  · Ablations · Supplementary · Open / pending**.
+Never overwrite an existing store, index, or note; report what already existed. Empty managed
+block template:
+```
+# experiments index
+<!-- mem-index: managed block; regenerate with /paper-index experiments. Do not hand-edit between the markers. -->
 
-**Phase B — Write the spine** at `<root>/README.md` (only if missing) and the
-`paper_narrative.md` skeleton. Keep the spine short; it is always-read. Include: the tier model
-(spine / always-read indexes / on-demand leaves); the **four destinations** and their gating
-(experiments, the important subset, technical notes, paper narrative); the experiment-leaf
-format and the technical-note format (below); the read-first contract; the "notes are fallible,
-flag inconsistencies on sight" clause; and the **context model** below, close to verbatim,
-since every command reasons from it:
-> **Context model.** The window is finite and everything always-loaded is paid on every task.
-> Always loaded: the spine, the technical-notes index, the paper narrative, and the
-> **important-experiments** index. On-demand: the full experiments index and every detail leaf,
-> the individual technical notes, loaded only when fetched. The indexes carry the full set plus
-> a one-line pointer per entry, so the existence and gist of every experiment are always known
-> even when its body is not; that is what makes deferring to recall safe. The important subset
-> exists precisely because the full experiments index grows without bound: only the paper-
-> critical runs earn permanent always-on cost; everything else stays one fetch away in
-> `experiments.md`. When unsure, leave a run out of the important subset and keep the always-on
-> set lean.
+<!-- /mem-index -->
+```
 
-The `paper_narrative.md` skeleton is the paper outline only (no invented results): `# <project>
-— paper narrative`, a one-line "source of truth = detail files; maintained via /papernote,
-sentence-gated" note, then empty sections **TL;DR (abstract) · Method · Main results · Ablations
-· Supplementary · Open / pending**.
-
-**Phase C — Wire the contract into CLAUDE.md (always).** In `./CLAUDE.md` (create if missing),
-insert or refresh a managed block, touching nothing outside the markers:
+**Phase B — Wire the contract into CLAUDE.md (always).** In `./CLAUDE.md` (create if missing),
+insert or refresh the managed block below, touching nothing outside the markers. This block is the
+spine — the only always-on memory context — so keep it tight:
 ```
 <!-- mem:begin (managed by memory-commands) -->
 ## Memory (paper notes)
-Before substantive work, read project_notes/README.md, the technical-notes index, the paper
-narrative, and experiments_important.md (the paper-critical run subset). The full run history is
-project_notes/experiments.md (on-demand) with detail leaves under experiments/; open them when
-you need a specific run rather than reasoning from the narrative's summaries. Notes can be
-stale: detail leaves are the source of truth, verify against them and raise inconsistencies on
-sight.
+Before substantive work, read these always-on indexes under project_notes/ (override the root
+with MEM_ROOT): technical_notes.md, paper_narrative.md, and experiments_important.md (the
+paper-critical run subset). The full run history is experiments.md (on-demand) with detail leaves
+under experiments/ — open them when you need a specific run rather than reasoning from the
+narrative's summaries.
+
+Destinations and gating: experiments/ + experiments.md (dated run leaves; low; append-only) ·
+experiments_important.md (the paper-critical subset; a projection of each leaf's **Important:**
+yes|no flag, rebuilt by /paper-index, never hand-edited) · technical_notes/ (durable
+methodology/gotchas; low to add, medium to edit) · paper_narrative.md (the curated paper argument;
+high, sentence-by-sentence approval). Capture with /logexp, /technote, /papernote, or /note to
+route; run /paper-index after any write. Keep the always-on set lean: only paper-critical runs
+earn the important subset; everything else stays one fetch away in experiments.md.
+
+Notes are fallible: detail leaves are the source of truth; verify against them and raise any
+inconsistency you notice (a narrative number that no longer matches its leaf, a dangling link, a
+stale "results pending", an important entry not flagged on its leaf) on the spot with what and
+where, rather than silently fixing it. The exhaustive sweep is /paper-audit.
 <!-- mem:end -->
 ```
 If the block already exists, replace only what is between the markers; never duplicate it.
 
-**Phase D — Build the context model for THIS project (always).** Before placing anything,
-reason explicitly, as a context engineer, about this specific project using the model in the
-spine. Judge what every task here needs always-on (the paper's thesis and headline claims, the
-core evaluation methodology, the load-bearing recipe, the handful of paper-critical runs) versus
-what is detail that belongs in on-demand leaves (every individual run, deep methodology). State
-the resulting model in a sentence or two: what you keep always-on, what you leave to recall, and
-why, and your initial criterion for which runs are "important".
+**Phase C — Build the context model for THIS project (always).** Before placing anything, reason
+explicitly, as a context engineer, about this specific project. The principle: everything
+always-loaded (the CLAUDE.md block, the technical-notes index, the narrative, the important
+subset) is paid on every task, while the full experiments index and every detail leaf cost only a
+fetch; the indexes carry a one-line pointer per entry, so the existence and gist of every run are
+always known even when its body is not. Judge what every task here needs always-on (the paper's
+thesis and headline claims, the core evaluation methodology, the load-bearing recipe, the handful
+of paper-critical runs) versus what belongs in on-demand leaves (every individual run, deep
+methodology). State the resulting model in a sentence or two: what you keep always-on, what you
+leave to recall, and why, and your initial criterion for which runs are "important".
 
-**Phase E — Migrate existing material (only if sources are given).** When $ARGUMENTS points at
-existing notes (a `NOTES.md`, a `docs/` pile, a lab log, scattered `.md`, a results
-spreadsheet):
+**Phase D — Migrate existing material (only if sources are given).** When $ARGUMENTS points at
+existing notes (a `NOTES.md`, a `docs/` pile, a lab log, scattered `.md`, a results spreadsheet):
 1. **Inventory** the sources and read them.
 2. **Propose a mapping** as a table: each chunk -> destination (an `experiments/` leaf with a
-   date+slug, a `technical_notes/` leaf, the spine for methodology/rules, the paper narrative,
-   or "leave out" with a reason). Mark which runs you recommend flagging **Important** (paper-
-   critical) versus ordinary, with the tradeoff stated. Flag duplicates and contradictions.
+   date+slug, a `technical_notes/` leaf, the CLAUDE.md block for methodology/rules, the paper
+   narrative, or "leave out" with a reason). Mark which runs you recommend flagging **Important**
+   (paper-critical) versus ordinary, with the tradeoff stated. Flag duplicates and contradictions.
 3. **Get approval** on the mapping before writing anything.
 4. **Execute through the writers**, each at its own gating: route runs as in `/logexp`,
    methodology as in `/technote`, paper claims as in `/papernote` (advise-first, sentence-by-

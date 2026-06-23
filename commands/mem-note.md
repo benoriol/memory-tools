@@ -4,7 +4,7 @@ Record durable operational knowledge in the knowledge store as a leaf in a topic
 refresh the index. This is not a dated result (that is `/mem-log`) and not the project story
 (that is `/mem-canon`).
 
-**1. New note or edit?** Read `knowledge/index.md` and decide whether this extends an existing
+**1. New note or edit?** Read `knowledge.md` and decide whether this extends an existing
 note or opens a new topic. Editing an existing note mutates durable truth, so it is gated
 harder than adding one.
 
@@ -24,7 +24,7 @@ say what conflicts and where before finalizing.
 `**Summary:** <one line>` (what the index shows), then terse bullets or short sections. Include
 code, paths, and flags where they prevent mistakes. Link to related leaves; do not restate
 knowledge that already lives elsewhere. Never put always-on, mistake-preventing rules here;
-those belong in the spine / `CLAUDE.md`.
+those belong in the `CLAUDE.md` memory block.
 
 **B. Edit an existing note (medium friction).** Read the target in full, show the proposed diff
 (or a tight before/after), and wait for approval before writing. Make the minimal change; do

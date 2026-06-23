@@ -8,7 +8,7 @@ to `/mem-canon`, index fixes to `/mem-index`).
 store, a folder, a topic, a date range, or a free-text concern).
 
 **Check for:**
-1. **Index drift** — a `<store>/index.md` that does not match the files on disk (missing leaf,
+1. **Index drift** — a `<store>.md` index that does not match the files on disk (missing leaf,
    stale entry, wrong tree). Fix by running `/mem-index <store>`.
 2. **Missing summaries** — leaves with no `**Summary:**` line (they index as `(summary needed)`).
 3. **Dangling links** — cross-references or canon evidence links pointing at a moved or deleted

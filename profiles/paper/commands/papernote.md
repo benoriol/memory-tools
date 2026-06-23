@@ -9,7 +9,7 @@ the narrative links down to them.
 
 **Always advise first.** Whatever is asked, reason before touching the file:
 - Read `paper_narrative.md`, `experiments_important.md`, and the relevant detail leaf/leaves
-  under `experiments/` that the claim rests on (and the spine/technical notes for methodology if
+  under `experiments/` that the claim rests on (and the technical notes for methodology if
   needed).
 - Say where the thing belongs — one of **TL;DR (abstract) · Method · Main results · Ablation ·
   Supplementary · Open/pending · Ignore** — with a one-line rationale. Flag any conflict with an

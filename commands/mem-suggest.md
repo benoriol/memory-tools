@@ -22,7 +22,8 @@ the command, and the gating:
 | durable methodology / a gotcha | `knowledge/` | `/mem-note` | low new, medium edit |
 | project story / a decision | `canon/` | `/mem-canon` | high, line-by-line |
 
-**4. Dedup against the indexes (shallow).** Read the relevant `index.md` trees and tag each
+**4. Dedup against the indexes (shallow).** Read the relevant store indexes (`journal.md`,
+`knowledge.md`, `canon.md`) and tag each
 item NEW (nothing covers it), ALREADY-CAPTURED (point to the leaf), or UPDATES (a leaf exists
 but the conversation has newer or conflicting info). Index level only; the exhaustive sweep is
 `/mem-audit`.

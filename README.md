@@ -50,12 +50,15 @@ with collaborators who lack this module, copy the command files into the repo's
 
 ## The three context tiers
 
-- **Spine** (always read): the project `CLAUDE.md` plus `project_notes/README.md`. Rules and
-  the read-first contract only. Tiny.
-- **Indexes** (always read): one auto-generated `index.md` per store, a full tree plus a
-  one-line summary per note. The only always-loaded view of deep memory.
-- **Leaves** (recall, on demand): the detail notes, nested in folders, read only by following
-  an index.
+- **Spine** (always read): a managed `## Memory` block inside the project `CLAUDE.md`. Rules,
+  the read-first contract, and gating only. Tiny. The harness always loads `CLAUDE.md`, so this
+  is genuinely always-on; there is no separate spine file to maintain or read. `/mem-init`
+  writes and refreshes the block (only between its markers).
+- **Indexes** (always read): one auto-generated index per store, a sibling file `<store>.md`
+  (`journal.md`, `knowledge.md`, `canon.md`) holding the full tree plus a one-line summary per
+  note. The only always-loaded view of deep memory.
+- **Leaves** (recall, on demand): the detail notes, nested in the store folders, read only by
+  following an index.
 
 ## The three stores
 
@@ -86,7 +89,7 @@ working (a note that contradicts the code or another note, a number that no long
 dangling link, a stale "results pending") is raised to the user on the spot, with what and
 where, not silently fixed. This is a continuous, surface-level check that fires whenever
 something is encountered; `/mem-audit` is the deliberate, exhaustive version. The clause lives
-in the spine, so it is always-read context on every task.
+in the `CLAUDE.md` memory block, so it is always-read context on every task.
 
 ## Notes root
 
@@ -130,7 +133,7 @@ What changes versus the generic profile:
 
 | generic | paper | difference |
 |---|---|---|
-| `journal/` + `index.md` | `experiments/` + `experiments.md` | dated run leaves; richer fields (Why / Headline / Important / Type / Setup / Result / Paths) |
+| `journal/` + `journal.md` | `experiments/` + `experiments.md` | dated run leaves; richer fields (Why / Headline / Important / Type / Setup / Result / Paths) |
 | — | `experiments_important.md` | **new always-read tier**: the paper-critical subset |
 | `knowledge/` | `technical_notes/` | durable methodology / gotchas (same protocol) |
 | `canon/` | `paper_narrative.md` | one curated doc, laid out in paper order (abstract → method → results → ablations → supplementary → open) |

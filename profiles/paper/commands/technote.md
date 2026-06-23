@@ -19,7 +19,7 @@ supersedes one, push back and say what conflicts and where before finalizing.
 sections. Include code, paths, and flags where they prevent mistakes. Link to related leaves; do
 not restate methodology that already lives elsewhere. **Never** put always-on, mistake-preventing
 rules here (environment/GPU pinning, commit policy, no fire-and-forget) — those belong in the
-spine / `CLAUDE.md`; this file is the on-demand depth.
+`CLAUDE.md` memory block; this file is the on-demand depth.
 
 **B. Edit an existing note (medium friction).** Read the target in full, show the proposed diff
 (or a tight before/after), and wait for approval before writing. A silent edit can change a
