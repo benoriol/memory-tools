@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
-# mem - install or uninstall the memory-commands slash commands for a project.
+# mem - install, update, or remove the memory-commands slash commands for a project.
 #
 # Two profiles:
 #   generic  the /mem-* command set (journal / knowledge / canon)
 #   paper    the research command set (/logexp /technote /papernote /note /whattonote
 #            /paper-audit /paper-init /paper-index)
 #
-# Per-project: run `mem install [profile]` inside a project to symlink that profile's commands
-# into ./.claude/commands. Per-project setup of the notes and the CLAUDE.md contract is done by
-# the /mem-init (generic) or /paper-init (paper) slash command, not this CLI.
+# Two install modes:
+#   copy (default)  each project owns real copies of the command files, so you can customise
+#                   them per project. Refresh later with `mem update` (it preserves your edits).
+#   --link          symlink into the module instead, so `git pull` in the module updates every
+#                   linked project at once (but local edits would change the module; and symlinks
+#                   break when the project repo is cloned without the module).
+#
+# Per-project notes + the CLAUDE.md contract are set up by /mem-init (generic) or /paper-init
+# (paper), not this CLI.
 set -euo pipefail
 shopt -s nullglob
 
@@ -24,20 +30,46 @@ PAPER_GLOB="*.md"
 
 # Default target is the current project's command dir; override with CLAUDE_COMMANDS_DIR.
 DEST_DIR="${CLAUDE_COMMANDS_DIR:-$PWD/.claude/commands}"
+# Tracks what this CLI installed (name, profile, mode, baseline hash) so update/uninstall can
+# tell an upstream change from a local customisation.
+MANIFEST="$DEST_DIR/.mem-manifest"
 
 profile_dir()  { case "$1" in generic) echo "$GENERIC_DIR" ;; paper) echo "$PAPER_DIR" ;; esac; }
 profile_glob() { case "$1" in generic) echo "$GENERIC_GLOB" ;; paper) echo "$PAPER_GLOB" ;; esac; }
+
+# Content fingerprint (POSIX cksum: checksum + byte count). Enough to detect edits.
+_hash() { cksum < "$1" | awk '{print $1"-"$2}'; }
+
+# Manifest helpers (tab-separated: name  profile  mode  baseline_hash).
+manifest_get()   { [ -f "$MANIFEST" ] && awk -F'\t' -v n="$1" '$1==n' "$MANIFEST" || true; }
+mf_field()       { printf '%s' "$1" | cut -f"$2"; }
+manifest_set() {
+  local name="$1" prof="$2" mode="$3" h="$4" tmp
+  mkdir -p "$DEST_DIR"; tmp="$(mktemp)"
+  [ -f "$MANIFEST" ] && awk -F'\t' -v n="$name" '$1!=n' "$MANIFEST" > "$tmp" || true
+  printf '%s\t%s\t%s\t%s\n' "$name" "$prof" "$mode" "$h" >> "$tmp"
+  mv "$tmp" "$MANIFEST"
+}
+manifest_del() {
+  [ -f "$MANIFEST" ] || return 0
+  local tmp; tmp="$(mktemp)"
+  awk -F'\t' -v n="$1" '$1!=n' "$MANIFEST" > "$tmp" || true
+  if [ -s "$tmp" ]; then mv "$tmp" "$MANIFEST"; else rm -f "$tmp" "$MANIFEST"; fi
+}
 
 usage() {
   cat <<EOF
 mem - manage the memory-commands slash commands (per-project)
 
 Usage:
-  mem install [generic|paper]   symlink a profile's commands into ./.claude/commands
-  mem install                   auto-detect the profile, then confirm
-  mem uninstall                 remove every symlink this module created here (any profile)
-  mem status                    show which commands of each profile are linked here
-  mem help                      this message
+  mem install [generic|paper] [--link]   copy a profile's commands into ./.claude/commands
+                                         (default), or --link to symlink them instead
+  mem install                            auto-detect the profile, then confirm
+  mem update  [generic|paper] [--force]  refresh copied commands from the module, keeping any
+                                         you have edited locally (--force overwrites them)
+  mem status                             show each command's state (copied / linked / modified)
+  mem uninstall                          remove this module's commands here (keeps your edited copies)
+  mem help                               this message
 
 Profiles:
   generic  /mem-* (journal / knowledge / canon)         <- $GENERIC_DIR
@@ -47,45 +79,38 @@ Module:  $MODULE_DIR
 Target:  $DEST_DIR
   (override the target with the CLAUDE_COMMANDS_DIR environment variable)
 
-Run this from a project's root. install symlinks rather than copies, so editing the module (or
-'git pull') updates the live commands. It never overwrites a real file; uninstall only removes
-symlinks that point back into this module. After installing, run /mem-init (generic) or
-/paper-init (paper) inside the project to scaffold project_notes/ and wire the CLAUDE.md contract.
+Run from a project's root. Copies are real files you can edit per project; `mem update` refreshes
+them and skips anything you changed. `--link` symlinks instead (module edits propagate via
+git pull, but break on clone). After installing, run /mem-init (generic) or /paper-init (paper).
 EOF
 }
 
-# Guess the profile from filesystem signals. Echoes "generic" or "paper" on stdout; the
-# human-readable reason goes to stderr so it does not pollute command substitution.
+# Guess the profile from filesystem signals. Echoes "generic" or "paper"; reason -> stderr.
 detect_profile() {
   local reasons=()
-  [ -d "$PWD/paper_writeups" ]            && reasons+=("paper_writeups/")
-  [ -d "$PWD/wandb" ]                     && reasons+=("wandb/")
-  [ -d "$PWD/checkpoints" ]              && reasons+=("checkpoints/")
-  [ -d "$PWD/project_notes/experiments" ] && reasons+=("project_notes/experiments/")
+  [ -d "$PWD/paper_writeups" ]               && reasons+=("paper_writeups/")
+  [ -d "$PWD/wandb" ]                        && reasons+=("wandb/")
+  [ -d "$PWD/checkpoints" ]                  && reasons+=("checkpoints/")
+  [ -d "$PWD/project_notes/experiments" ]    && reasons+=("project_notes/experiments/")
   [ -f "$PWD/project_notes/experiments.md" ] && reasons+=("project_notes/experiments.md")
-  local tex; tex=( "$PWD"/*.tex )
-  [ ${#tex[@]} -gt 0 ]                    && reasons+=("*.tex")
-  # any project_notes/<line>/experiments.md (the multi-line research layout)
+  local tex; tex=( "$PWD"/*.tex ); [ ${#tex[@]} -gt 0 ] && reasons+=("*.tex")
   local line; for line in "$PWD"/project_notes/*/experiments.md; do reasons+=("$(basename "$(dirname "$line")")/experiments.md"); done
   if [ ${#reasons[@]} -gt 0 ]; then
-    echo "detected research signals: ${reasons[*]} -> suggesting 'paper'" >&2
-    echo paper
+    echo "detected research signals: ${reasons[*]} -> suggesting 'paper'" >&2; echo paper
   else
-    echo "no research signals found -> suggesting 'generic'" >&2
-    echo generic
+    echo "no research signals found -> suggesting 'generic'" >&2; echo generic
   fi
 }
 
-# Resolve the profile to install: explicit arg, else auto-detect + (if interactive) confirm.
+# Resolve the profile: explicit arg, else auto-detect + (if interactive) confirm.
 resolve_profile() {
   local arg="${1:-}"
   if [ -n "$arg" ]; then
-    case "$arg" in generic|paper) echo "$arg"; return 0 ;; *) echo "unknown profile: $arg (use 'generic' or 'paper')" >&2; return 1 ;; esac
+    case "$arg" in generic|paper) echo "$arg"; return 0 ;; *) echo "unknown profile: $arg" >&2; return 1 ;; esac
   fi
   local guess; guess="$(detect_profile)"
   if [ -t 0 ]; then
-    local ans
-    read -r -p "Install profile '$guess'? [Y]es / (g)eneric / (p)aper / (n)o: " ans
+    local ans; read -r -p "Install profile '$guess'? [Y]es / (g)eneric / (p)aper / (n)o: " ans
     case "$ans" in
       ""|y|Y|yes) echo "$guess" ;;
       g|generic)  echo generic ;;
@@ -93,71 +118,142 @@ resolve_profile() {
       *)          echo "aborted." >&2; return 1 ;;
     esac
   else
-    echo "non-interactive; using '$guess' (pass 'generic'/'paper' to override)" >&2
-    echo "$guess"
+    echo "non-interactive; using '$guess' (pass 'generic'/'paper' to override)" >&2; echo "$guess"
   fi
 }
 
 cmd_install() {
-  local profile src glob
-  profile="$(resolve_profile "${1:-}")" || exit 1
-  src="$(profile_dir "$profile")"; glob="$(profile_glob "$profile")"
-  mkdir -p "$DEST_DIR"
-  local n=0 f name link
-  for f in "$src"/$glob; do
-    name="$(basename "$f")"
-    link="$DEST_DIR/$name"
-    if [ -e "$link" ] && [ ! -L "$link" ]; then
-      echo "skip  $name (a real file exists at $link; not overwriting)"
-      continue
-    fi
-    ln -sfn "$f" "$link"
-    echo "link  $name"
-    n=$((n + 1))
+  local profile="" mode="copy" a
+  for a in "$@"; do
+    case "$a" in
+      --copy) mode=copy ;;
+      --link) mode=link ;;
+      generic|paper) profile="$a" ;;
+      *) echo "unknown install arg: $a" >&2; exit 1 ;;
+    esac
   done
-  echo "installed $n '$profile' command(s) into $DEST_DIR"
+  profile="$(resolve_profile "$profile")" || exit 1
+  local src glob; src="$(profile_dir "$profile")"; glob="$(profile_glob "$profile")"
+  mkdir -p "$DEST_DIR"
+  local n=0 f name link srch ent tgt desth base
+  for f in "$src"/$glob; do
+    name="$(basename "$f")"; link="$DEST_DIR/$name"; srch="$(_hash "$f")"
+    ent="$(manifest_get "$name")"
+    if [ -L "$link" ]; then
+      tgt="$(readlink -f "$link" 2>/dev/null || true)"
+      case "$tgt" in "$MODULE_DIR"/*) : ;; *) echo "skip  $name (foreign symlink; not touching)"; continue ;; esac
+    elif [ -e "$link" ]; then
+      if [ -n "$ent" ]; then
+        desth="$(_hash "$link")"; base="$(mf_field "$ent" 4)"
+        if [ "$desth" != "$srch" ] && [ "$desth" != "$base" ]; then
+          echo "skip  $name (locally modified; use 'mem update --force' to overwrite)"; continue
+        fi
+      else
+        echo "skip  $name (a real file exists; not overwriting)"; continue
+      fi
+    fi
+    rm -f "$link"
+    if [ "$mode" = link ]; then ln -sfn "$f" "$link"; echo "link  $name"; else cp "$f" "$link"; echo "copy  $name"; fi
+    manifest_set "$name" "$profile" "$mode" "$srch"; n=$((n + 1))
+  done
+  echo "installed $n '$profile' command(s) ($mode) into $DEST_DIR"
+}
+
+cmd_update() {
+  local force=0 profile="" a
+  for a in "$@"; do case "$a" in --force) force=1 ;; generic|paper) profile="$a" ;; *) echo "unknown update arg: $a" >&2; exit 1 ;; esac; done
+  if [ ! -f "$MANIFEST" ]; then echo "nothing installed here (no manifest at $MANIFEST)"; return 0; fi
+  local snap; snap="$(mktemp)"; cp "$MANIFEST" "$snap"
+  local n=0 name prof mode base f link srch desth
+  # Refresh tracked entries.
+  while IFS=$'\t' read -r name prof mode base; do
+    [ -n "${name:-}" ] || continue
+    [ -z "$profile" ] || [ "$profile" = "$prof" ] || continue
+    f="$(profile_dir "$prof")/$name"; link="$DEST_DIR/$name"
+    if [ ! -e "$f" ]; then echo "gone  $name (no longer in module '$prof'); kept local copy"; continue; fi
+    if [ "$mode" = link ]; then echo "link  $name (symlink; auto-updates)"; continue; fi
+    srch="$(_hash "$f")"
+    if [ ! -e "$link" ]; then cp "$f" "$link"; manifest_set "$name" "$prof" copy "$srch"; echo "add   $name (restored)"; n=$((n + 1)); continue; fi
+    desth="$(_hash "$link")"
+    if [ "$desth" = "$srch" ]; then echo "ok    $name (up to date)"; continue; fi
+    if [ "$desth" = "$base" ]; then
+      cp "$f" "$link"; manifest_set "$name" "$prof" copy "$srch"; echo "upd   $name (module changed)"; n=$((n + 1))
+    elif [ "$force" = 1 ]; then
+      cp "$f" "$link"; manifest_set "$name" "$prof" copy "$srch"; echo "upd   $name (overwrote local changes)"; n=$((n + 1))
+    else
+      echo "skip  $name (locally modified; module differs — merge by hand or use --force)"
+    fi
+  done < "$snap"
+  rm -f "$snap"
+  # Pull in commands newly added to the module (not yet tracked) for the installed profile(s).
+  local profs prof dir glob
+  if [ -n "$profile" ]; then profs="$profile"; else profs="$(cut -f2 "$MANIFEST" | sort -u)"; fi
+  for prof in $profs; do
+    dir="$(profile_dir "$prof")"; glob="$(profile_glob "$prof")"
+    for f in "$dir"/$glob; do
+      name="$(basename "$f")"; [ -z "$(manifest_get "$name")" ] || continue
+      link="$DEST_DIR/$name"
+      if [ -e "$link" ] && [ ! -L "$link" ]; then echo "skip  $name (untracked real file)"; continue; fi
+      cp "$f" "$link"; manifest_set "$name" "$prof" copy "$(_hash "$f")"; echo "add   $name (new in module)"; n=$((n + 1))
+    done
+  done
+  echo "updated $n command(s) in $DEST_DIR"
 }
 
 cmd_uninstall() {
-  # Profile-agnostic: remove any *.md symlink in DEST that resolves into this module.
-  local n=0 link tgt
+  local n=0 kept=0 link tgt name prof mode base desth snap
+  # Our symlinks (resolve into the module).
   for link in "$DEST_DIR"/*.md; do
     [ -L "$link" ] || continue
     tgt="$(readlink -f "$link" 2>/dev/null || true)"
-    case "$tgt" in
-      "$MODULE_DIR"/*)
-        rm -f "$link"
-        echo "rm    $(basename "$link")"
-        n=$((n + 1))
-        ;;
-    esac
+    case "$tgt" in "$MODULE_DIR"/*) name="$(basename "$link")"; rm -f "$link"; echo "rm    $name"; n=$((n + 1)); manifest_del "$name" ;; esac
   done
-  echo "removed $n command(s) from $DEST_DIR"
+  # Our tracked copies: remove the untouched ones, keep anything you edited.
+  if [ -f "$MANIFEST" ]; then
+    snap="$(mktemp)"; cp "$MANIFEST" "$snap"
+    while IFS=$'\t' read -r name prof mode base; do
+      [ -n "${name:-}" ] || continue
+      [ "$mode" = copy ] || continue
+      link="$DEST_DIR/$name"
+      if [ ! -e "$link" ]; then manifest_del "$name"; continue; fi
+      desth="$(_hash "$link")"
+      if [ "$desth" = "$base" ]; then rm -f "$link"; echo "rm    $name"; n=$((n + 1)); manifest_del "$name"
+      else echo "keep  $name (locally modified; delete by hand if unwanted)"; kept=$((kept + 1)); fi
+    done < "$snap"
+    rm -f "$snap"
+  fi
+  if [ "$kept" -gt 0 ]; then echo "removed $n command(s), kept $kept modified, from $DEST_DIR"
+  else echo "removed $n command(s) from $DEST_DIR"; fi
 }
 
 cmd_status() {
   echo "target dir: $DEST_DIR"
-  local profile src glob f name link state
+  local profile src glob f name link srch ent base desth tgt state
   for profile in generic paper; do
     src="$(profile_dir "$profile")"; glob="$(profile_glob "$profile")"
     echo "[$profile] $src"
     for f in "$src"/$glob; do
-      name="$(basename "$f")"
-      link="$DEST_DIR/$name"
-      if [ -L "$link" ] && [ "$(readlink -f "$link")" = "$(readlink -f "$f")" ]; then
-        state="linked"
+      name="$(basename "$f")"; link="$DEST_DIR/$name"; srch="$(_hash "$f")"; ent="$(manifest_get "$name")"
+      if [ -L "$link" ]; then
+        tgt="$(readlink -f "$link" 2>/dev/null || true)"
+        case "$tgt" in "$MODULE_DIR"/*) state="linked" ;; *) state="present (foreign symlink)" ;; esac
       elif [ -e "$link" ]; then
-        state="present (not ours)"
-      else
-        state="missing"
-      fi
+        desth="$(_hash "$link")"
+        if [ -n "$ent" ]; then
+          base="$(mf_field "$ent" 4)"
+          if   [ "$desth" = "$srch" ]; then state="copied (up to date)"
+          elif [ "$desth" = "$base" ]; then state="copied (update available)"
+          else state="copied (modified)"; fi
+        else state="present (not ours)"; fi
+      else state="missing"; fi
       printf '  %-18s %s\n' "$name" "$state"
     done
   done
 }
 
 case "${1:-help}" in
-  install)        shift; cmd_install "${1:-}" ;;
+  install)        shift; cmd_install "$@" ;;
+  update)         shift; cmd_update "$@" ;;
   uninstall)      cmd_uninstall ;;
   status)         cmd_status ;;
   help | -h | --help) usage ;;

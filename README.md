@@ -14,8 +14,8 @@ Ships in two **profiles**:
 
 ## Install
 
-This folder is the central module; keep it as a git repo so a single `git pull` updates every
-project that uses it.
+Keep this folder as a git repo and `git pull` to get new versions of the commands; refresh them
+into a project with `mem update`.
 
 One-time, put the `mem` CLI on your PATH:
 
@@ -30,23 +30,37 @@ cd ~/code/some-project
 mem install            # auto-detect the profile (generic vs paper), then confirm
 mem install generic    # force the generic profile (/mem-*)
 mem install paper      # force the paper profile (/logexp, /technote, ...)
+mem install paper --link   # symlink instead of copy (central updates; see below)
                        # then, inside Claude Code: /mem-init (generic) or /paper-init (paper)
                        # to scaffold notes + wire the contract
-mem status             # show which commands of each profile are linked here
-mem uninstall          # remove this module's symlinks (any profile) from this project
+mem update             # pull new versions of the commands from the module, keeping your edits
+mem status             # show each command's state (copied / linked / modified)
+mem uninstall          # remove this module's commands here (keeps copies you edited)
 ```
 
 Bare `mem install` sniffs the project for research signals (`paper_writeups/`, `*.tex`, `wandb/`,
 `checkpoints/`, an existing `project_notes/experiments*`) and suggests `paper`, otherwise
-`generic`; it asks for one confirmation before linking (and falls back to the guess when run
-non-interactively). `uninstall` is profile-agnostic: it removes any command symlink pointing back
-into this module, so switching profiles is just `uninstall` then `install <other>`.
+`generic`; it asks for one confirmation (and falls back to the guess when run non-interactively).
 
-`mem install` symlinks rather than copies, so editing the module (or `git pull`) updates the
-live commands. It never overwrites a real file, and `uninstall` only removes symlinks that point
-back into this module. Override the target dir with `CLAUDE_COMMANDS_DIR`. For sharing a repo
-with collaborators who lack this module, copy the command files into the repo's
-`.claude/commands/` instead of symlinking (symlinks break on clone).
+### Copy (default) vs `--link`
+
+`mem install` **copies** the command files into the project's `.claude/commands/` by default, so
+each project owns real files you can **customise for project-specific needs**. Refresh them later
+with `mem update`: it re-copies commands that changed upstream but **skips any you edited locally**
+(reporting them; `mem update --force` overwrites them). This is clone-friendly — the commands
+travel with the repo for collaborators who do not have the module. A small `.mem-manifest` in
+`.claude/commands/` records what was installed so update/uninstall can tell your edits from
+upstream changes.
+
+`mem install --link` **symlinks** into the module instead: one source of truth, so `git pull` in
+the module updates every linked project at once, no `mem update` needed. The trade-offs: editing a
+linked command edits the module (so it hits every project), and symlinks break when the project is
+cloned without the module. Use `--link` for projects you never customise.
+
+Either way, `install` never overwrites a real file it does not own, and `uninstall` removes only
+this module's commands — keeping any copy you have edited (delete those by hand if you want them
+gone). Switching profiles is `uninstall` then `install <other>`; override the target dir with
+`CLAUDE_COMMANDS_DIR`.
 
 ## The three context tiers
 
