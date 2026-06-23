@@ -71,16 +71,16 @@ Usage:
   mem uninstall                          remove this module's commands here (keeps your edited copies)
   mem help                               this message
 
-Profiles (both install the same /mem-* command names; one profile per project):
-  generic  journal / knowledge / canon                              <- $GENERIC_DIR
-  paper    experiments (+important) / technical notes / narrative   <- $PAPER_DIR
+Profiles (same /mem-* commands; the profile decides what they write):
+  generic  general note-taking: journal / knowledge / canon
+  paper    research projects: experiments (+important) / technical notes / paper narrative
 
 Module:  $MODULE_DIR
 Target:  $DEST_DIR
   (override the target with the CLAUDE_COMMANDS_DIR environment variable)
 
-Run from a project's root. Copies are real files you can edit per project; `mem update` refreshes
-them and skips anything you changed. `--link` symlinks instead (module edits propagate via
+Run from a project's root. Copies are real files you can edit per project; 'mem update' refreshes
+them and skips anything you changed. '--link' symlinks instead (module edits propagate via
 git pull, but break on clone). After installing, run /mem-init to scaffold the notes.
 EOF
 }
