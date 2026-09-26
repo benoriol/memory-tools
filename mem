@@ -13,8 +13,9 @@
 #                   linked project at once (but local edits would change the module; and symlinks
 #                   break when the project repo is cloned without the module).
 #
-# Per-project notes + the CLAUDE.md contract are set up by the /mem-init slash command (whichever
-# profile is installed), not this CLI.
+# `mem install` also scaffolds the empty notes tree (store folders + blank index files) under
+# MEM_ROOT (default ./project_notes), never overwriting anything. Wiring the CLAUDE.md contract
+# and migrating existing notes is done by the /mem-init slash command.
 set -euo pipefail
 shopt -s nullglob
 
@@ -81,7 +82,8 @@ Target:  $DEST_DIR
 
 Run from a project's root. Copies are real files you can edit per project; 'mem update' refreshes
 them and skips anything you changed. '--link' symlinks instead (module edits propagate via
-git pull, but break on clone). After installing, run /mem-init to scaffold the notes.
+git pull, but break on clone). Install also creates the empty notes tree under \$MEM_ROOT
+(default ./project_notes); then run /mem-init to wire the CLAUDE.md contract.
 EOF
 }
 
@@ -122,6 +124,55 @@ resolve_profile() {
   fi
 }
 
+# Create a blank index file (header + empty managed block) unless it already exists.
+_mkindex() {
+  local file="$1" title="$2" store="$3"
+  if [ -e "$file" ]; then echo "have  $file"; return 0; fi
+  printf '# %s\n<!-- mem-index: managed block; regenerate with /mem-index %s. Do not hand-edit between the markers. -->\n\n<!-- /mem-index -->\n' \
+    "$title" "$store" > "$file"
+  echo "new   $file"
+}
+_mkdir() { if [ -d "$1" ]; then echo "have  $1/"; else mkdir -p "$1"; echo "new   $1/"; fi; }
+
+# Scaffold the empty notes tree for a profile. Idempotent; never overwrites.
+scaffold_notes() {
+  local profile="$1" root="${MEM_ROOT:-$PWD/project_notes}" s
+  mkdir -p "$root"; root="$(cd "$root" && pwd)"
+  echo "notes root: $root"
+  if [ "$profile" = paper ]; then
+    _mkdir "$root/experiments"
+    _mkindex "$root/experiments.md" "experiments index" experiments
+    _mkindex "$root/experiments_important.md" "important experiments (paper-critical subset)" experiments
+    _mkdir "$root/technical_notes"
+    _mkindex "$root/technical_notes.md" "technical notes index" technical
+    if [ -e "$root/paper_narrative.md" ]; then echo "have  $root/paper_narrative.md"; else
+      cat > "$root/paper_narrative.md" <<EOF
+# $(basename "$PWD"): paper narrative
+
+Source of truth = the detail files; maintained via /mem-canon, sentence-gated.
+
+## TL;DR (abstract)
+
+## Method
+
+## Main results
+
+## Ablations
+
+## Supplementary
+
+## Open / pending
+EOF
+      echo "new   $root/paper_narrative.md"
+    fi
+  else
+    for s in journal knowledge canon; do
+      _mkdir "$root/$s"
+      _mkindex "$root/$s.md" "$s index" "$s"
+    done
+  fi
+}
+
 cmd_install() {
   local profile="" mode="copy" a
   for a in "$@"; do
@@ -157,6 +208,7 @@ cmd_install() {
     manifest_set "$name" "$profile" "$mode" "$srch"; n=$((n + 1))
   done
   echo "installed $n '$profile' command(s) ($mode) into $DEST_DIR"
+  scaffold_notes "$profile"
 }
 
 cmd_update() {

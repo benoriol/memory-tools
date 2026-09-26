@@ -1,7 +1,7 @@
 Survey the work so far and suggest what is worth capturing, without writing anything. Optional focus: $ARGUMENTS
 
 The read-only, advisory sibling of `/mem`. It never writes, logs, or edits any file; the only
-output is a short bullet summary of what you would capture and where each piece would go. Think
+output is a short lettered list of actions (new, edit, delete) and where each would go. Think
 "what would `/mem` find here if I ran it now?" Useful when several capturable things have piled
 up over a session. Research analog of `/mem-suggest`.
 
@@ -27,16 +27,25 @@ and the gating:
 One item can fan out to several destinations; say so when it does, and flag any you think is
 Important (paper-critical).
 
-**4. Dedup against the indexes (shallow).** Read the relevant indexes (`experiments.md`,
-`experiments_important.md`, `technical_notes.md`) and tag each item NEW (nothing covers it),
-ALREADY-CAPTURED (point to the leaf), or UPDATES (a leaf exists but the conversation has newer or
-conflicting info). Index level only; the exhaustive sweep is `/mem-audit`.
+**4. Turn candidates into actions (shallow).** Read the relevant indexes (`experiments.md`,
+`experiments_important.md`, `technical_notes.md`) and, where needed, the leaf itself. Each
+candidate becomes one action: **NEW** (nothing covers it), **EDIT** (a leaf exists but the
+conversation has newer, extra, or conflicting info), or **DELETE** (a leaf is now wrong,
+superseded, or a duplicate). Drop anything already captured. Index level plus the touched leaves
+only; the exhaustive sweep is `/mem-audit`.
 
-**5. Report, bullets only.** One bullet per item: `<description>` -> `<destination>` ·
-`<command>` · `<gating>` · `<NEW / ALREADY-CAPTURED / UPDATES>` · `<flag if Important>`. Then a
-one-line roll-up of the files that would be touched if you captured all NEW items, and a suggested
-next step (e.g. "run /mem on items 1-3; item 4 is already covered"). If nothing is worth
-capturing, say so in one line.
+**5. Report in exactly this format, nothing else.** Letter the actions A, B, C, ... in order:
+```
+A. NEW <path> · <command>
+   <what to write, one line>
+B. EDIT <path> · <command>
+   Now: <what the leaf says, short>. Change: <what to change>. Why: <reason>.
+C. DELETE <path>
+   Why: <reason>.
+```
+One or two short lines per action: enough for me to understand it with minimal context, no
+more. Add `(Important)` after the command for a paper-critical run. No preamble, no roll-up, no
+next-step advice. If nothing is worth capturing, say so in one line.
 
 **Always:** suggest, never write. Touch no leaf, no index, no `paper_narrative.md`, no
 `CLAUDE.md`. Never invent numbers or paths; if a run's results are not in the conversation, write

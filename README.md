@@ -12,8 +12,8 @@ Ships in two **profiles**:
   notes**, and canon becomes a paper-format **narrative**. See [Paper profile](#paper-profile).
 
 Both profiles install the identical command set (`/mem`, `/mem-init`, `/mem-log`, `/mem-note`,
-`/mem-canon`, `/mem-suggest`, `/mem-audit`, `/mem-index`); the profile you install decides what
-each command writes and where. A project uses one profile.
+`/mem-canon`, `/mem-suggest`, `/mem-audit`, `/mem-archive`, `/mem-index`); the profile you install
+decides what each command writes and where. A project uses one profile.
 
 ## Install
 
@@ -34,7 +34,8 @@ mem install            # auto-detect the profile (generic vs paper), then confir
 mem install generic    # force the generic profile (/mem-*)
 mem install paper      # force the paper profile (same /mem-* names, research content)
 mem install paper --link   # symlink instead of copy (central updates; see below)
-                       # then, inside Claude Code: /mem-init  (scaffolds notes + wires the contract)
+                       # install also creates the empty notes tree (folders + blank indexes)
+                       # then, inside Claude Code: /mem-init  (wires the CLAUDE.md contract)
 mem update             # pull new versions of the commands from the module, keeping your edits
 mem status             # show each command's state (copied / linked / modified)
 mem uninstall          # remove this module's commands here (keeps copies you edited)
@@ -43,6 +44,11 @@ mem uninstall          # remove this module's commands here (keeps copies you ed
 Bare `mem install` sniffs the project for research signals (`paper_writeups/`, `*.tex`, `wandb/`,
 `checkpoints/`, an existing `project_notes/experiments*`) and suggests `paper`, otherwise
 `generic`; it asks for one confirmation (and falls back to the guess when run non-interactively).
+
+`mem install` also scaffolds the profile's empty notes tree under `$MEM_ROOT` (default
+`./project_notes`): the store folders plus blank index files (header and an empty managed block),
+and for `paper` a section-only `paper_narrative.md` skeleton. It never overwrites an existing file
+or folder, and `mem uninstall` never removes notes.
 
 ### Copy (default) vs `--link`
 
@@ -129,6 +135,8 @@ Routing and review:
 - `/mem` — router: classify a capture, confirm the route, delegate to a writer.
 - `/mem-audit` — read-only consistency sweep across the stores; proposes fixes, never silent.
 - `/mem-suggest` — read-only "what is worth capturing here?" advisory.
+- `/mem-archive [targets or focus]`: propose notes to archive (lettered list), then on your
+  confirmation move them to `<root>/_archive/` (mirrored paths) and reindex. Never deletes.
 
 ## Gating summary
 
@@ -155,7 +163,7 @@ changes:
 | `/mem-log` | dated event → `journal/` | dated run/experiment → `experiments/` (+ an `Important:` flag) |
 | `/mem-note` | durable method/fact → `knowledge/` | methodology / gotcha → `technical_notes/` |
 | `/mem-canon` | project story/decision → `canon/` | paper argument → `paper_narrative.md` (paper-ordered) |
-| `/mem` `/mem-suggest` `/mem-audit` | route / advise / audit the stores | same, over the paper destinations |
+| `/mem` `/mem-suggest` `/mem-audit` `/mem-archive` | route / advise / audit the stores | same, over the paper destinations |
 | `/mem-init` `/mem-index` | scaffold / rebuild indexes | same, for the paper layout |
 
 The paper layout also adds one tier with no generic equivalent: `experiments_important.md`, an
